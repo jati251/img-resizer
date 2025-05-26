@@ -1,19 +1,35 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 
 export default function ImageResizeCompressRotate() {
   const [originalFile, setOriginalFile] = useState(null);
-  const [processedUrl, setProcessedUrl] = useState(null);
+  const [displayUrl, setDisplayUrl] = useState(null); // single display URL
+  const [originalSize, setOriginalSize] = useState(null); // size in KB
+  const [processedSize, setProcessedSize] = useState(null); // size in KB
   const [percent, setPercent] = useState(100);
   const [quality, setQuality] = useState(0.8);
   const [rotation, setRotation] = useState(0);
   const [error, setError] = useState(null);
   const canvasRef = useRef(null);
 
+  useEffect(() => {
+    if (!originalFile) {
+      setDisplayUrl(null);
+      setOriginalSize(null);
+      setProcessedSize(null);
+      return;
+    }
+    const url = URL.createObjectURL(originalFile);
+    setDisplayUrl(url);
+    setOriginalSize((originalFile.size / 1024).toFixed(2)); // KB
+    setProcessedSize(null); // reset processed size
+
+    return () => URL.revokeObjectURL(url);
+  }, [originalFile]);
+
   function handleFileChange(e) {
     if (e.target.files && e.target.files[0]) {
       setOriginalFile(e.target.files[0]);
-      setProcessedUrl(null);
       setError(null);
     }
   }
@@ -39,6 +55,7 @@ export default function ImageResizeCompressRotate() {
           };
 
           const compressedFile = await imageCompression(originalFile, options);
+          setProcessedSize((compressedFile.size / 1024).toFixed(2)); // KB processed file size
 
           const compressedImg = new Image();
           compressedImg.onload = () => {
@@ -64,7 +81,7 @@ export default function ImageResizeCompressRotate() {
             ctx.restore();
 
             const finalDataUrl = canvas.toDataURL("image/jpeg", quality);
-            setProcessedUrl(finalDataUrl);
+            setDisplayUrl(finalDataUrl);
           };
 
           compressedImg.src = URL.createObjectURL(compressedFile);
@@ -80,10 +97,12 @@ export default function ImageResizeCompressRotate() {
   }
 
   function downloadImage() {
-    if (!processedUrl) return;
+    if (!displayUrl) return;
     const a = document.createElement("a");
-    a.href = processedUrl;
-    a.download = "processed_" + originalFile.name;
+    a.href = displayUrl;
+    a.download = originalFile
+      ? "processed_" + originalFile.name
+      : "processed_image.jpg";
     a.click();
   }
 
@@ -164,18 +183,26 @@ export default function ImageResizeCompressRotate() {
         <p className="text-red-600 text-center font-semibold">{error}</p>
       )}
 
-      {processedUrl && (
+      {displayUrl && (
         <div className="text-center">
+          <p className="mb-2 font-semibold text-gray-700">
+            Original size:{" "}
+            <span className="text-indigo-600">{originalSize} KB</span> |
+            Processed size:{" "}
+            <span className="text-indigo-600">
+              {processedSize ? processedSize + " KB" : "-"}
+            </span>
+          </p>
           <img
-            src={processedUrl}
-            alt="Processed preview"
+            src={displayUrl}
+            alt="Uploaded or processed preview"
             className="mx-auto rounded-lg shadow-lg max-w-full border border-indigo-300"
           />
           <button
             onClick={downloadImage}
             className="mt-6 px-6 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition"
           >
-            Download Processed Image
+            Download Image
           </button>
         </div>
       )}
