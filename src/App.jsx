@@ -8,9 +8,12 @@ export default function ImageResizeCompressRotate() {
   const [processedSize, setProcessedSize] = useState(null); // size in KB
   const [percent, setPercent] = useState(100);
   const [quality, setQuality] = useState(0.8);
+  const [loading, setLoading] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [error, setError] = useState(null);
   const canvasRef = useRef(null);
+  const [originalResolution, setOriginalResolution] = useState(null);
+  const [processedResolution, setProcessedResolution] = useState(null);
 
   useEffect(() => {
     if (!originalFile) {
@@ -36,13 +39,14 @@ export default function ImageResizeCompressRotate() {
 
   async function processImage() {
     if (!originalFile) return;
-
+    setLoading(true);
     try {
       const img = new Image();
       const fileReader = new FileReader();
 
       fileReader.onload = async (e) => {
         img.onload = async () => {
+          setOriginalResolution({ width: img.width, height: img.height });
           const maxDim = Math.max(img.width, img.height);
           const scale = percent / 100;
           const maxWidthOrHeight = maxDim * scale;
@@ -62,6 +66,8 @@ export default function ImageResizeCompressRotate() {
             const canvas = canvasRef.current;
             let cw = compressedImg.width;
             let ch = compressedImg.height;
+
+            setProcessedResolution({ width: cw, height: ch });
 
             if (rotation === 90 || rotation === 270) {
               canvas.width = ch;
@@ -94,6 +100,7 @@ export default function ImageResizeCompressRotate() {
     } catch (err) {
       setError("Error processing image: " + err.message);
     }
+    setLoading(false);
   }
 
   function downloadImage() {
@@ -185,6 +192,28 @@ export default function ImageResizeCompressRotate() {
 
       {displayUrl && (
         <div className="text-center">
+          {originalResolution && processedResolution && (
+            <div className="mt-2 text-gray-700 font-semibold text-center">
+              <p>
+                Original Resolution:{" "}
+                <span className="text-indigo-600">
+                  {originalResolution.width} ×{" "}
+                </span>
+                <span className="text-indigo-600">
+                  {originalResolution.height}
+                </span>
+              </p>
+              <p>
+                Processed Resolution:{" "}
+                <span className="text-indigo-600">
+                  {processedResolution.width} ×{" "}
+                </span>
+                <span className="text-indigo-600">
+                  {processedResolution.height}
+                </span>
+              </p>
+            </div>
+          )}
           <p className="mb-2 font-semibold text-gray-700">
             Original size:{" "}
             <span className="text-indigo-600">{originalSize} KB</span> |
@@ -193,11 +222,37 @@ export default function ImageResizeCompressRotate() {
               {processedSize ? processedSize + " KB" : "-"}
             </span>
           </p>
-          <img
-            src={displayUrl}
-            alt="Uploaded or processed preview"
-            className="mx-auto rounded-lg shadow-lg max-w-full border border-indigo-300"
-          />
+          {loading ? (
+            <div className="flex justify-center items-center my-12">
+              <svg
+                className="animate-spin h-10 w-10 text-indigo-600"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
+            </div>
+          ) : (
+            <img
+              src={displayUrl}
+              alt="Uploaded or processed preview"
+              className="mx-auto rounded-lg shadow-lg max-w-full border border-indigo-300"
+            />
+          )}
+
           <button
             onClick={downloadImage}
             className="mt-6 px-6 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition"
