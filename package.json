@@ -1,5 +1,5 @@
 {
-  "name": "pdf-resizer",
+  "name": "img-resizer",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,9 +11,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.7",
-    "file-saver": "^2.0.5",
-    "lucide-react": "^0.511.0",
-    "pdf-lib": "^1.17.1",
+    "browser-image-compression": "^2.0.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.7"
