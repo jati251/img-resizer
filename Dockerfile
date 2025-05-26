@@ -1,28 +1,16 @@
-# Dockerfile
-
-# Build stage
-FROM node:20 AS build
+FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json ./
 RUN npm install
 
 COPY . .
 RUN npm run build
 
-# Serve stage
-FROM nginx:alpine
-
-# Remove default nginx index page
-RUN rm -rf /usr/share/nginx/html/*
-
-# Copy built files from previous stage
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Copy custom nginx config (optional)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Install serve globally
+RUN npm install -g serve
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["serve", "-s", "dist", "-l", "80"]
