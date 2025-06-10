@@ -352,14 +352,14 @@ const ImageSimpleEditor = () => {
 
   // --- Render ---
   return (
-    <div className="bg-gray-900 rounded-3xl shadow-xl text-gray-100 flex flex-col items-center justify-center min-h-screen p-4 font-sans">
+    <div className="max-w-7xl mx-auto bg-gray-900 rounded-3xl shadow-xl text-gray-100 flex flex-col items-center justify-center  p-4 font-sans">
       <div className="w-full max-w-7xl">
         <header className="text-center mb-6">
           <h1 className="text-3xl md:text-5xl font-bold text-sky-700 tracking-tight">
             Image Simple Editor
           </h1>
-          <p className="text-gray-400 mt-2 text-lg">
-            Use the controls to add, reorder, and edit your logo layers.
+          <p className="text-gray-400 mt-2 text-md">
+            simple tool to add your multiple logo/any png without background
           </p>
         </header>
 
@@ -368,7 +368,7 @@ const ImageSimpleEditor = () => {
             {/* Step 1 & 2 */}
             <div>
               <h2 className="text-xl font-semibold mb-3 text-sky-400">
-                Step 1: Base Image
+                Base Image
               </h2>
               <label
                 htmlFor="baseImageUpload"
@@ -406,7 +406,7 @@ const ImageSimpleEditor = () => {
             </div>
             <div>
               <h2 className="text-xl font-semibold mb-3 text-sky-400">
-                Step 2: Add Logos
+                Add Logos/PNGs
               </h2>
               <label
                 htmlFor="logoUpload"
@@ -430,7 +430,7 @@ const ImageSimpleEditor = () => {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                <span>Add New Logo</span>
+                <span>Add New Logo/PNG</span>
               </label>
               <input
                 id="logoUpload"
@@ -581,29 +581,31 @@ const ImageSimpleEditor = () => {
             </div>
           </div>
         </div>
-        <div className="mt-6 flex justify-center">
-          <button
-            onClick={handleDownload}
-            disabled={!baseImage}
-            className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 mr-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+        {baseImage && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={handleDownload}
+              disabled={!baseImage}
+              className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Download Final Image
-          </button>
-        </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 mr-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Download Image
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

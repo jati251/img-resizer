@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function Home() {
   return (
-    <div className="bg-gray-900 rounded-3xl shadow-xl text-gray-100 flex flex-col items-center justify-center p-6 font-sans">
+    <div className="bg-gray-900 mx-auto my-auto w-fit rounded-3xl shadow-xl text-gray-100 flex flex-col items-center justify-center p-6 font-sans">
       <div className="w-full max-w-5xl">
         <header className="text-center mb-10">
           <h1 className="text-3xl md:text-5xl font-bold text-sky-700 tracking-tight">
@@ -13,7 +13,7 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1  gap-6">
           <Link
             to="/img-resizer"
             className="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 hover:bg-gray-700 transition-colors"

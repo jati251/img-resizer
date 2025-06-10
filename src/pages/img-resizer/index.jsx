@@ -115,12 +115,17 @@ const ImageResizer = () => {
 
   return (
     <div className="max-w-lg mx-auto mt-12 p-8 bg-gray-900  rounded-3xl shadow-xl space-y-8">
-      <h1 className="text-4xl font-extrabold text-center text-sky-700 mb-4">
-        Image Resizer & Compressor
-      </h1>
+      <header className="text-center mb-6">
+        <h1 className="text-3xl font-bold text-center text-sky-700 mb-4">
+          Image Resizer & Compressor
+        </h1>
+        <p className="text-gray-400 mt-2 text-sm">
+          simple tool to resize/compress image quality
+        </p>
+      </header>
 
       <div className="flex flex-col space-y-3">
-        <label className="block text-gray-700 font-semibold mb-1">
+        <label className="block text-sky-300 font-semibold mb-1">
           Upload Image
         </label>
         <input
@@ -133,8 +138,8 @@ const ImageResizer = () => {
 
       <div className="flex flex-col gap-6 sm:grid sm:grid-cols-3">
         <div className="flex flex-col">
-          <label className="font-semibold text-gray-700 mb-1">
-            Resize <span className="text-sky-600">{percent}%</span>
+          <label className="font-semibold text-sky-300 mb-1">
+            Resize <span className="text-sky-400">{percent}%</span>
           </label>
           <input
             type="range"
@@ -142,13 +147,13 @@ const ImageResizer = () => {
             max="100"
             value={percent}
             onChange={(e) => setPercent(parseInt(e.target.value))}
-            className="w-full accent-sky-600 cursor-pointer"
+            className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="font-semibold text-gray-700 mb-1">
-            Quality <span className="text-sky-600">{quality.toFixed(2)}</span>
+          <label className="font-semibold text-sky-300 mb-1">
+            Quality <span className="text-sky-400">{quality.toFixed(2)}</span>
           </label>
           <input
             type="range"
@@ -157,16 +162,16 @@ const ImageResizer = () => {
             step="0.05"
             value={quality}
             onChange={(e) => setQuality(parseFloat(e.target.value))}
-            className="w-full accent-sky-600 cursor-pointer"
+            className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="font-semibold text-gray-700 mb-1">Rotation</label>
+          <label className="font-semibold text-gray-600 mb-1">Rotation</label>
           <select
             value={rotation}
             onChange={(e) => setRotation(parseInt(e.target.value))}
-            className="border border-sky-300 rounded-md px-3 py-3 text-sky-700 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-400 w-full"
+            className="border border-sky-300 rounded-md px-3 py-3 text-sky-600 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-400 w-full"
             aria-label="Select rotation angle"
           >
             <option value={0}>0°</option>
@@ -254,8 +259,22 @@ const ImageResizer = () => {
 
           <button
             onClick={downloadImage}
-            className="mt-6 px-6 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition"
+            className="inline-flex items-center justify-center mt-6 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-semibold transition"
           >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 mr-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
             Download Image
           </button>
         </div>

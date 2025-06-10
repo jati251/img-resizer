@@ -10,7 +10,7 @@ export default function App() {
   return (
     <div className="p-6">
       {!isHome && (
-        <nav className="mb-6 w-full max-w-7xl mx-auto bg-gray-900 text-gray-100 px-2 py-4 rounded-2xl shadow-xl border border-gray-700 flex items-center justify-center gap-4">
+        <nav className="mb-6 w-fit max-w-6xl mx-auto bg-gray-900 text-gray-100 px-4 py-4 rounded-2xl shadow-xl border border-gray-700 flex items-center justify-center gap-4">
           <Link to="/" className="text-sky-600 transition-colors font-semibold">
             Home
           </Link>
@@ -24,7 +24,7 @@ export default function App() {
             to="/img-simple-editor"
             className="text-sky-600 transition-colors font-semibold"
           >
-            Simple Editor
+            Image Simple Editor
           </Link>
         </nav>
       )}
