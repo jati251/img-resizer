@@ -45,6 +45,7 @@ const ImageSimpleEditor = () => {
   const [layers, setLayers] = useState([]);
   const [selectedLayerId, setSelectedLayerId] = useState(null);
   const [baseImageName, setBaseImageName] = useState("No image selected");
+  const [baseImageType, setBaseImageType] = useState("image/png"); // To store original file type
 
   // --- Refs for Interaction State ---
   const canvasRef = useRef(null);
@@ -132,6 +133,7 @@ const ImageSimpleEditor = () => {
         setBaseImageName(file.name);
         setLayers([]);
         setSelectedLayerId(null);
+        setBaseImageType(file.type); // Store the file type
       };
       img.src = event.target.result;
     };
@@ -337,17 +339,58 @@ const ImageSimpleEditor = () => {
   };
 
   const handleDownload = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || !baseImage) return;
-    const currentSelection = selectedLayerId;
-    setSelectedLayerId(null);
-    setTimeout(() => {
-      const link = document.createElement("a");
-      link.download = "watermarked-image.png";
-      link.href = canvas.toDataURL("image/png", 1.0);
-      link.click();
-      setSelectedLayerId(currentSelection);
-    }, 50);
+    const onScreenCanvas = canvasRef.current;
+    if (!onScreenCanvas || !baseImage) return;
+
+    // Create an in-memory canvas at the original image's resolution
+    const downloadCanvas = document.createElement("canvas");
+    downloadCanvas.width = baseImage.naturalWidth;
+    downloadCanvas.height = baseImage.naturalHeight;
+    const ctx = downloadCanvas.getContext("2d");
+
+    // Calculate the scale factor between the original image and the on-screen canvas
+    const scaleFactor = baseImage.naturalWidth / onScreenCanvas.width;
+
+    // Draw the base image at full resolution
+    ctx.drawImage(baseImage, 0, 0, downloadCanvas.width, downloadCanvas.height);
+
+    // Draw each layer, scaling its properties
+    layers.forEach((layer) => {
+      const scaledX = layer.x * scaleFactor;
+      const scaledY = layer.y * scaleFactor;
+      const scaledWidth = layer.width * scaleFactor;
+      const scaledHeight = layer.height * scaleFactor;
+
+      ctx.save();
+      ctx.translate(scaledX + scaledWidth / 2, scaledY + scaledHeight / 2);
+      ctx.rotate(layer.rotation);
+      ctx.drawImage(
+        layer.image,
+        -scaledWidth / 2,
+        -scaledHeight / 2,
+        scaledWidth,
+        scaledHeight
+      );
+      ctx.restore();
+    });
+
+    // --- LOGIC FOR FILE TYPE AND QUALITY ---
+    let mimeType = "image/png";
+    let quality = 1.0;
+    let fileName = "watermarked-image.png";
+
+    // If the original was a JPEG, save as a high-quality JPEG to keep file size reasonable.
+    if (baseImageType === "image/jpeg") {
+      mimeType = "image/jpeg";
+      quality = 0.92; // A good balance of quality and size. 1.0 is max.
+      fileName = "watermarked-image.jpg";
+    }
+
+    // Trigger the download from the in-memory canvas
+    const link = document.createElement("a");
+    link.download = fileName;
+    link.href = downloadCanvas.toDataURL(mimeType, quality);
+    link.click();
   };
 
   // --- Render ---
