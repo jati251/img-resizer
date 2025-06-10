@@ -326,7 +326,7 @@ const ImageSimpleEditor = () => {
 
   const handleCanvasTouchMove = (e) => {
     if (!isDraggingRef.current || !selectedLayer) return;
-    e.preventDefault();
+    // e.preventDefault();
     const pos = getTouchPos(e);
     updateLayer(selectedLayerId, {
       x: pos.x - dragStartRef.current.x,
@@ -398,11 +398,11 @@ const ImageSimpleEditor = () => {
     <div className="max-w-7xl mx-auto bg-gray-900 rounded-3xl shadow-xl text-gray-100 flex flex-col items-center justify-center  p-4 font-sans">
       <div className="w-full max-w-7xl">
         <header className="text-center mb-6">
-          <h1 className="text-3xl md:text-5xl font-bold text-sky-700 tracking-tight">
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
             Image Simple Editor
           </h1>
           <p className="text-gray-400 mt-2 text-md">
-            simple tool to add your multiple logo/any png without background
+            Add and edit logos/pngs on top of your images
           </p>
         </header>
 
@@ -447,43 +447,45 @@ const ImageSimpleEditor = () => {
                 {baseImageName}
               </p>
             </div>
-            <div>
-              <h2 className="text-xl font-semibold mb-3 text-sky-400">
-                Add Logos/PNGs
-              </h2>
-              <label
-                htmlFor="logoUpload"
-                className={`w-full cursor-pointer text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center ${
-                  !baseImage
-                    ? "bg-gray-600 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700"
-                }`}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+            {baseImage && (
+              <div>
+                <h2 className="text-xl font-semibold mb-3 text-sky-400">
+                  Add Logos/PNGs
+                </h2>
+                <label
+                  htmlFor="logoUpload"
+                  className={`w-full cursor-pointer text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center ${
+                    !baseImage
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700"
+                  }`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                <span>Add New Logo/PNG</span>
-              </label>
-              <input
-                id="logoUpload"
-                type="file"
-                className="sr-only"
-                onChange={addLogoLayer}
-                accept="image/png"
-                disabled={!baseImage}
-              />
-            </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  <span>Add New Logo/PNG</span>
+                </label>
+                <input
+                  id="logoUpload"
+                  type="file"
+                  className="sr-only"
+                  onChange={addLogoLayer}
+                  accept="image/png"
+                  disabled={!baseImage}
+                />
+              </div>
+            )}
 
             {/* Draggable Layers List */}
             <div className="flex-grow flex flex-col min-h-[150px]">

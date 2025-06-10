@@ -19,10 +19,10 @@ export default function Home() {
             className="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 hover:bg-gray-700 transition-colors"
           >
             <h2 className="text-2xl font-semibold text-sky-400 mb-2">
-              🔧 Image Resizer
+              🤏🏼 Image Compress & Resizer
             </h2>
             <p className="text-gray-300">
-              Quickly resize your images with precision and ease.
+              Quickly compress your images or resize to minimal size
             </p>
           </Link>
 
@@ -31,10 +31,21 @@ export default function Home() {
             className="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 hover:bg-gray-700 transition-colors"
           >
             <h2 className="text-2xl font-semibold text-sky-400 mb-2">
-              🎨 Simple Image Editor
+              🖼️ Image Simple Editor
             </h2>
             <p className="text-gray-300">
-              Add and customize logos on top of your images.
+              Add and edit logos/pngs on top of your images.
+            </p>
+          </Link>
+          <Link
+            to="/bg-remover"
+            className="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 hover:bg-gray-700 transition-colors"
+          >
+            <h2 className="text-2xl font-semibold text-sky-400 mb-2">
+              ✂️ Background Remover
+            </h2>
+            <p className="text-gray-300">
+              got pranked in google search ? no worries just remove here
             </p>
           </Link>
         </div>

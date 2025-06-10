@@ -116,15 +116,15 @@ const ImageResizer = () => {
   return (
     <div className="max-w-lg mx-auto mt-12 p-8 bg-gray-900  rounded-3xl shadow-xl space-y-8">
       <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-center text-sky-700 mb-4">
+        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
           Image Resizer & Compressor
         </h1>
         <p className="text-gray-400 mt-2 text-sm">
-          simple tool to resize/compress image quality
+          Quickly compress your images or resize to minimal size
         </p>
       </header>
 
-      <div className="flex flex-col space-y-3">
+      <div className="bg-gray-800 p-4 rounded-xl shadow-2xl border border-gray-700 flex flex-col space-y-3">
         <label className="block text-sky-300 font-semibold mb-1">
           Upload Image
         </label>
@@ -136,7 +136,7 @@ const ImageResizer = () => {
         />
       </div>
 
-      <div className="flex flex-col gap-6 sm:grid sm:grid-cols-3">
+      <div className="bg-gray-800 p-4 rounded-xl shadow-2xl border border-gray-700 flex flex-col gap-6 sm:grid sm:grid-cols-3">
         <div className="flex flex-col">
           <label className="font-semibold text-sky-300 mb-1">
             Resize <span className="text-sky-400">{percent}%</span>
