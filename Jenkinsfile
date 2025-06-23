@@ -47,7 +47,7 @@ pipeline {
               docker image prune -f
 
               docker build -t $IMAGE_NAME:$TAG .
-              docker run -d --name $CONTAINER_NAME -p 5173:80 $IMAGE_NAME:$TAG
+              docker run -d --restart always --name $CONTAINER_NAME -p 5173:80 $IMAGE_NAME:$TAG
             '
           """
         }
