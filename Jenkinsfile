@@ -22,7 +22,7 @@ pipeline {
         ])
       }
     }
-    stage('Deploy to VM B') {
+    stage('Deploy to VM dockerized-app') {
       steps {
         sshagent(credentials: ['github-credentials']) {
           sh """
