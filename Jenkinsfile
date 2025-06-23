@@ -27,25 +27,35 @@ pipeline {
       steps {
         sshagent(credentials: ['ssh-app']) {
           sh """
-            ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST '
-              set -e
+  ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST '
+    set -e
 
-              mkdir -p $REMOTE_DIR &&
-              cd $REMOTE_DIR &&
+    echo "[INFO] Creating project directory..."
+    mkdir -p $REMOTE_DIR
+    cd $REMOTE_DIR
 
-              if [ ! -d .git ]; then
-                git clone https://github.com/jati251/img-resizer.git .
-              else
-                git pull
-              fi &&
+    echo "[INFO] Pulling latest code..."
+    if [ ! -d .git ]; then
+      git clone https://github.com/jati251/img-resizer.git .
+    else
+      git pull
+    fi
 
-              docker rm -f $CONTAINER_NAME || true &&
-              docker image rm -f $IMAGE_NAME:$TAG || true &&
-              docker image prune -f &&
-              docker build -t $IMAGE_NAME:$TAG . &&
-              docker run -d --name $CONTAINER_NAME -p 5173:80 $IMAGE_NAME:$TAG
-            '
-          """
+    echo "[INFO] Stopping old container (if running)..."
+    docker stop ${CONTAINER_NAME} || true
+    docker rm -f ${CONTAINER_NAME} || true
+
+    echo "[INFO] Removing old image (if exists)..."
+    docker image rm -f ${IMAGE_NAME}:${TAG} || true
+    docker image prune -f
+
+    echo "[INFO] Building new image..."
+    docker build -t ${IMAGE_NAME}:${TAG} .
+
+    echo "[INFO] Running new container..."
+    docker run -d --name ${CONTAINER_NAME} -p 5173:80 ${IMAGE_NAME}:${TAG}
+  '
+"""
         }
       }
     }
