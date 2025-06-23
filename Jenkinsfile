@@ -24,7 +24,7 @@ pipeline {
     }
     stage('Deploy to VM B') {
       steps {
-        sshagent(credentials: ['vm-b-ssh-pass']) {
+        sshagent(credentials: ['github-credentials']) {
           sh """
             ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST '
               mkdir -p $REMOTE_DIR &&
