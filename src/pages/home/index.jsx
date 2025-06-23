@@ -9,7 +9,7 @@ export default function Home() {
             🛠️ Image Tools Hub
           </h1>
           <p className="text-gray-400 mt-2 text-lg">
-            Choose a tools below to start working with your images.
+            Choose a tools below to start working with your images idea.
           </p>
         </header>
 
