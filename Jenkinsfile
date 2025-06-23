@@ -40,6 +40,7 @@ pipeline {
               fi &&
 
               docker rm -f $CONTAINER_NAME || true &&
+              docker image rm -f $IMAGE_NAME:$TAG || true &&
               docker image prune -f &&
               docker build -t $IMAGE_NAME:$TAG . &&
               docker run -d --name $CONTAINER_NAME -p 5173:80 $IMAGE_NAME:$TAG
