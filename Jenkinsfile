@@ -27,8 +27,8 @@ pipeline {
       steps {
         sshagent(credentials: ['ssh-app']) {
           sh """
-  ssh -o StrictHostKeyChecking=no \$REMOTE_USER@\$REMOTE_HOST bash -c '
-    set -e
+          ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST sh -c '
+         set -e
 
     echo "[INFO] Creating project directory..."
     mkdir -p \$REMOTE_DIR
