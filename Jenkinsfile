@@ -11,6 +11,9 @@ pipeline {
   }
 
   stages {
+    // STAGE 1: Checkout code on the Jenkins Agent
+    // This stage uses your 'github-credentials' (like a Personal Access Token)
+    // to check out the code into the Jenkins workspace. This is good practice.
     stage('Checkout') {
       steps {
         checkout([$class: 'GitSCM',
@@ -23,44 +26,59 @@ pipeline {
       }
     }
 
+    // STAGE 2: Deploy to the Remote Virtual Machine
+    // This stage connects to your VM using an SSH key ('ssh-app') and
+    // runs all the necessary commands to update and restart the application.
     stage('Deploy to VM dockerized-app') {
       steps {
         sshagent(credentials: ['ssh-app']) {
           sh """
-            ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST '
-              # This makes the script exit immediately if any command fails
-              set -e
+  ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST '
+    # Use "set -e" to make the script exit immediately if any command fails.
+    set -e
 
-              echo "[INFO] Moving to project directory..."
-              mkdir -p $REMOTE_DIR
-              cd $REMOTE_DIR
+    echo "[INFO] Ensuring SSH directory exists and GitHub is a known host..."
+    mkdir -p -m 700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-              echo "[INFO] Pulling latest code..."
-              if [ ! -d .git ]; then
-                git clone https://github.com/jati251/img-resizer.git .
-              else
-                git pull
-              fi
+    echo "[INFO] Creating project directory if it does not exist..."
+    mkdir -p $REMOTE_DIR
+    cd $REMOTE_DIR
 
-              echo "[INFO] Stopping container if it is running..."
-              # UPDATE: Stop the container first. The "|| true" prevents an error if it does not exist.
-              docker stop $CONTAINER_NAME || true
+    echo "[INFO] Setting up git repository..."
+    # If the .git directory doesn't exist, clone the repo using the SSH URL.
+    if [ ! -d .git ]; then
+      echo "[INFO] Cloning new repository..."
+      git clone git@github.com:jati251/img-resizer.git .
+    # If it already exists, ensure the remote URL is set to SSH and pull the latest changes.
+    else
+      echo "[INFO] Updating existing repository..."
+      git remote set-url origin git@github.com:jati251/img-resizer.git
+      git pull
+    fi
 
-              echo "[INFO] Removing old container..."
-              # UPDATE: Now safely remove the stopped container.
-              docker rm -f $CONTAINER_NAME || true
+    echo "[INFO] --- Docker Operations ---"
 
-              echo "[INFO] Cleaning up old images..."
-              docker image rm -f $IMAGE_NAME:$TAG || true
-              docker image prune -f
+    echo "[INFO] Stopping old container (if running)..."
+    docker stop ${CONTAINER_NAME} || true
 
-              echo "[INFO] Building new image..."
-              docker build -t $IMAGE_NAME:$TAG .
+    echo "[INFO] Removing old container (if exists)..."
+    docker rm -f ${CONTAINER_NAME} || true
 
-              echo "[INFO] Running new container..."
-              docker run -d --name $CONTAINER_NAME -p 5173:80 $IMAGE_NAME:$TAG
-            '
-          """
+    echo "[INFO] Removing old image (if exists)..."
+    docker image rm -f ${IMAGE_NAME}:${TAG} || true
+
+    echo "[INFO] Pruning unused docker images..."
+    docker image prune -f
+
+    echo "[INFO] Building new Docker image..."
+    docker build -t ${IMAGE_NAME}:${TAG} .
+
+    echo "[INFO] Running new container..."
+    docker run -d --name ${CONTAINER_NAME} -p 5173:80 ${IMAGE_NAME}:${TAG}
+
+    echo "[INFO] --- Deployment Successful ---"
+  '
+"""
         }
       }
     }
