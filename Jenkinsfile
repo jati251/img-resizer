@@ -24,7 +24,7 @@ pipeline {
     }
     stage('Deploy to VM dockerized-app') {
       steps {
-        sshagent(credentials: ['github-credentials']) {
+        sshagent(credentials: ['ssh-app']) {
           sh """
             ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST '
               mkdir -p $REMOTE_DIR &&
