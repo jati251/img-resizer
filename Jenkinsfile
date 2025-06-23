@@ -13,10 +13,15 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        git 'https://github.com/jati251/img-resizer.git'
+        checkout([$class: 'GitSCM',
+            userRemoteConfigs: [[
+                url: 'https://github.com/jati251/img-resizer.git',
+                credentialsId: 'github-credentials'
+            ]],
+            branches: [[name: '*/master']]
+        ])
       }
     }
-
     stage('Deploy to VM B') {
       steps {
         sshagent(credentials: ['vm-b-ssh-pass']) {
