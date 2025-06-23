@@ -2,12 +2,12 @@ pipeline {
   agent any
 
   environment {
-    IMAGE_NAME = "img-resizer"
-    CONTAINER_NAME = "img-resizer-container"
-    TAG = "latest"
-    REMOTE_USER = "jati"        // change this
-    REMOTE_HOST = "192.168.1.4" // change this
-    REMOTE_DIR = "/home/jati/img-resizer" // or wherever on VM B
+    IMAGE_NAME = 'image-tool'                    // standardized image name
+    CONTAINER_NAME = 'image-tool'                // standard container name
+    TAG = 'latest'
+    REMOTE_USER = 'jati'
+    REMOTE_HOST = '192.168.1.4'
+    REMOTE_DIR = '/home/jati/img-resizer'
   }
 
   stages {
@@ -22,17 +22,27 @@ pipeline {
         ])
       }
     }
+
     stage('Deploy to VM dockerized-app') {
       steps {
         sshagent(credentials: ['ssh-app']) {
           sh """
             ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST '
+              set -e
+
               mkdir -p $REMOTE_DIR &&
               cd $REMOTE_DIR &&
-              if [ ! -d .git ]; then git clone https://github.com/jati251/img-resizer.git .; else git pull; fi &&
+
+              if [ ! -d .git ]; then
+                git clone https://github.com/jati251/img-resizer.git .
+              else
+                git pull
+              fi &&
+
               docker rm -f $CONTAINER_NAME || true &&
+              docker image prune -f &&
               docker build -t $IMAGE_NAME:$TAG . &&
-              docker run -d --name $CONTAINER_NAME -p 80:80 $IMAGE_NAME:$TAG
+              docker run -d --name $CONTAINER_NAME -p 5173:80 $IMAGE_NAME:$TAG
             '
           """
         }
