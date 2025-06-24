@@ -6,7 +6,7 @@ pipeline {
     CONTAINER_NAME = 'image-tool'                // standard container name
     TAG = 'latest'
     REMOTE_USER = 'jati'
-    REMOTE_HOST = '192.168.1.4'
+    REMOTE_HOST = '192.168.1.200'
     REMOTE_DIR = '/home/jati/img-resizer'
   }
 
