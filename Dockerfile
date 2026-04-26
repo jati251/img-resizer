@@ -20,9 +20,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy build artifacts from stage 1
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Healthcheck to ensure stability
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1
 
 EXPOSE 80
 
