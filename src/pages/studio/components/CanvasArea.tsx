@@ -20,6 +20,7 @@ interface CanvasAreaProps {
   setSelectedLayerId: (id: string | null) => void;
   showGuidelines?: boolean;
   showGrid?: boolean;
+  canvasBg?: string;
 }
 
 export const CanvasArea: React.FC<CanvasAreaProps> = ({
@@ -39,7 +40,8 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   setZoom,
   setSelectedLayerId,
   showGuidelines = true,
-  showGrid = true
+  showGrid = true,
+  canvasBg = "#09090b"
 }) => {
   const editingLayer = layers.find(l => l.id === editingTextId) as TextLayer | undefined;
 
@@ -68,7 +70,8 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
           height: canvasSize.height, 
           transform: `translate3d(${canvasOffset.x}px, ${canvasOffset.y}px, 0) scale(${zoom})`, 
           transformOrigin: '0 0',
-          backgroundImage: 'conic-gradient(#1a1a1a 90deg, #111 90deg 180deg, #1a1a1a 180deg 270deg, #111 270deg)',
+          backgroundColor: canvasBg,
+          backgroundImage: !canvasBg || canvasBg === 'transparent' ? 'conic-gradient(#1a1a1a 90deg, #111 90deg 180deg, #1a1a1a 180deg 270deg, #111 270deg)' : 'none',
           backgroundSize: '20px 20px'
         }} 
       >

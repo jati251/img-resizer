@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { removeBackground } from "@imgly/background-removal";
-import { Layer, ImageLayer, TextLayer } from "./types";
+import { Layer, ImageLayer, TextLayer, ShapeLayer } from "./types";
 import { generateId, getMousePos, isPosOnLayer, drawAllLayers } from "./utils";
 import { Topbar } from "./components/Topbar";
 import { SidebarLeft } from "./components/SidebarLeft";
@@ -90,10 +90,10 @@ export default function Studio() {
     [layers, selectedLayerId],
   );
 
-  const handleInitProject = (width: number, height: number) => {
+  const handleInitProject = (width: number, height: number, transparent: boolean = false) => {
     setCanvasSize({ width, height });
     setIsInitialized(true);
-
+    
     // Fit to screen and center
     setTimeout(() => {
       if (containerRef.current) {
@@ -110,8 +110,33 @@ export default function Studio() {
           x: (cw - width * fitZoom) / 2,
           y: (ch - height * fitZoom) / 2,
         });
+
+        // Only add white background if NOT transparent
+        if (!transparent) {
+          const initialBg: ShapeLayer = {
+            id: generateId(),
+            type: "shape",
+            name: "Project Background",
+            shapeType: "rect",
+            x: 0,
+            y: 0,
+            width,
+            height,
+            rotation: 0,
+            opacity: 100,
+            hidden: false,
+            locked: true,
+            blendMode: "source-over",
+            fill: "#ffffff",
+            stroke: "transparent",
+            strokeWidth: 0,
+          };
+          setLayers([initialBg]);
+        } else {
+          setLayers([]);
+        }
       }
-    }, 50);
+    }, 0);
   };
 
   const updateLayer = (id: string, updates: Partial<Layer>) => {
@@ -189,6 +214,57 @@ export default function Studio() {
     };
     setLayers([textLayer, ...layers]);
     setSelectedLayerId(textLayer.id);
+  };
+
+  const addShapeLayer = (shapeType: "rect" | "circle" | "triangle" | "star") => {
+    const shapeLayer: ShapeLayer = {
+      id: generateId(),
+      type: "shape",
+      name: `${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)} Layer`,
+      shapeType,
+      x: canvasSize.width / 2 - 100,
+      y: canvasSize.height / 2 - 100,
+      width: 200,
+      height: 200,
+      rotation: 0,
+      opacity: 100,
+      hidden: false,
+      locked: false,
+      blendMode: "source-over",
+      fill: "#3b82f6",
+      stroke: "transparent",
+      strokeWidth: 0,
+    };
+    setLayers([shapeLayer, ...layers]);
+    setSelectedLayerId(shapeLayer.id);
+  };
+
+  const setCanvasBackground = (color: string) => {
+    const bgLayer = layers.find(l => l.name === "Project Background") as ShapeLayer | undefined;
+    
+    if (bgLayer) {
+      updateLayer(bgLayer.id, { fill: color });
+    } else {
+      const newBg: ShapeLayer = {
+        id: generateId(),
+        type: "shape",
+        name: "Project Background",
+        shapeType: "rect",
+        x: 0,
+        y: 0,
+        width: canvasSize.width,
+        height: canvasSize.height,
+        rotation: 0,
+        opacity: 100,
+        hidden: false,
+        locked: true,
+        blendMode: "source-over",
+        fill: color,
+        stroke: "transparent",
+        strokeWidth: 0,
+      };
+      setLayers([...layers, newBg]); 
+    }
   };
 
   // Dynamic text measurement
@@ -345,7 +421,7 @@ export default function Studio() {
         zoom,
         isCropping,
         isExport,
-        SELECTION_COLOR,
+        SELECTION_COLOR
       );
     },
     [layers, selectedLayerId, zoom, isCropping],
@@ -595,10 +671,12 @@ export default function Studio() {
         onToggleGrid={() => setShowGrid(!showGrid)}
       />
       <div className="flex flex-1 overflow-hidden relative">
-        <SidebarLeft
-          onAddImage={addImageLayer}
-          onAddText={addTextLayer}
-          onClearAll={() => setLayers([])}
+        <SidebarLeft 
+          onAddImage={addImageLayer} 
+          onAddText={addTextLayer} 
+          onAddShape={addShapeLayer}
+          onUpdateBg={setCanvasBackground}
+          onClearAll={() => setLayers([])} 
         />
         <CanvasArea
           canvasRef={canvasRef}

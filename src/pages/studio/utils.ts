@@ -1,4 +1,4 @@
-import { Layer, ImageLayer, TextLayer } from "./types";
+import { Layer, ImageLayer, TextLayer, ShapeLayer } from "./types";
 
 export const generateId = () => `layer_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
@@ -41,9 +41,15 @@ export const drawAllLayers = (
   zoom: number, 
   isCropping: boolean, 
   isExport: boolean,
-  selectionColor: string
+  selectionColor: string,
+  backgroundColor?: string
 ) => {
   ctx.clearRect(0, 0, width, height);
+
+  if (backgroundColor) {
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, width, height);
+  }
   
   if (!isExport) {
     const size = 20;
@@ -151,7 +157,47 @@ export const drawAllLayers = (
         ctx.fillText(line, alignX, startY + index * lineHeight);
       });
       if ("letterSpacing" in ctx) (ctx as any).letterSpacing = "0px";
-    }
+    } else if (layer.type === "shape") {
+        const shp = layer as ShapeLayer;
+        ctx.beginPath();
+        const hw = layer.width / 2;
+        const hh = layer.height / 2;
+
+        if (shp.shapeType === "rect") {
+          ctx.rect(-hw, -hh, layer.width, layer.height);
+        } else if (shp.shapeType === "circle") {
+          ctx.arc(0, 0, Math.min(hw, hh), 0, Math.PI * 2);
+        } else if (shp.shapeType === "triangle") {
+          ctx.moveTo(0, -hh);
+          ctx.lineTo(hw, hh);
+          ctx.lineTo(-hw, hh);
+          ctx.closePath();
+        } else if (shp.shapeType === "star") {
+          const spikes = 5;
+          const outerRadius = Math.min(hw, hh);
+          const innerRadius = outerRadius * 0.4;
+          let rot = (Math.PI / 2) * 3;
+          let step = Math.PI / spikes;
+          ctx.moveTo(0, -outerRadius);
+          for (let i = 0; i < spikes; i++) {
+            ctx.lineTo(Math.cos(rot) * outerRadius, Math.sin(rot) * outerRadius);
+            rot += step;
+            ctx.lineTo(Math.cos(rot) * innerRadius, Math.sin(rot) * innerRadius);
+            rot += step;
+          }
+          ctx.lineTo(0, -outerRadius);
+        }
+
+        if (shp.fill) {
+          ctx.fillStyle = shp.fill;
+          ctx.fill();
+        }
+        if (shp.stroke && shp.strokeWidth > 0) {
+          ctx.strokeStyle = shp.stroke;
+          ctx.lineWidth = shp.strokeWidth;
+          ctx.stroke();
+        }
+      }
 
     if (!isExport && layer.id === selectedLayerId && !layer.locked) {
       ctx.filter = "none";

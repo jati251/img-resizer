@@ -1,4 +1,4 @@
-export type LayerType = "image" | "text";
+export type LayerType = "image" | "text" | "shape";
 
 export type BlendMode = "source-over" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity";
 
@@ -52,4 +52,12 @@ export interface TextLayer extends BaseLayer {
   textAlign: "left" | "center" | "right";
 }
 
-export type Layer = ImageLayer | TextLayer;
+export interface ShapeLayer extends BaseLayer {
+  type: "shape";
+  shapeType: "rect" | "circle" | "triangle" | "star";
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+}
+
+export type Layer = ImageLayer | TextLayer | ShapeLayer;

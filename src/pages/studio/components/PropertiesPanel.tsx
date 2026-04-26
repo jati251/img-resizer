@@ -1,5 +1,5 @@
 import React from "react";
-import { Layer, ImageLayer, TextLayer } from "../types";
+import { Layer, ImageLayer, TextLayer, ShapeLayer } from "../types";
 import { 
   Trash2, 
   Layout, 
@@ -64,6 +64,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
   const isImage = selectedLayer.type === "image";
   const isText = selectedLayer.type === "text";
+  const isShape = selectedLayer.type === "shape";
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0c0c0e] overflow-hidden">
@@ -144,6 +145,78 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             </div>
           </div>
         </section>
+
+        {isShape && (
+          <section className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex items-center gap-2 text-zinc-500">
+              <Sparkles size={12} />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Shape Styles</span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] text-zinc-600 font-bold uppercase">Fill Color</label>
+                <div className="flex items-center gap-3 h-10 bg-zinc-900/50 border border-zinc-800 rounded-xl px-2 group focus-within:border-zinc-600 transition-all">
+                  <div 
+                    className="w-6 h-6 rounded-lg border border-zinc-700/50 group-hover:scale-105 transition-transform shrink-0 relative"
+                    style={{ backgroundColor: (selectedLayer as ShapeLayer).fill }}
+                  >
+                    <input 
+                      type="color" 
+                      value={(selectedLayer as ShapeLayer).fill} 
+                      onChange={(e) => onUpdate(selectedLayer.id, { fill: e.target.value })} 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                    />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={(selectedLayer as ShapeLayer).fill} 
+                    onChange={(e) => onUpdate(selectedLayer.id, { fill: e.target.value })} 
+                    className="w-full bg-transparent text-[10px] font-mono outline-none text-zinc-400 uppercase tracking-widest pl-0" 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] text-zinc-600 font-bold uppercase">Stroke Color</label>
+                <div className="flex items-center gap-3 h-10 bg-zinc-900/50 border border-zinc-800 rounded-xl px-2 group focus-within:border-zinc-600 transition-all">
+                  <div 
+                    className="w-6 h-6 rounded-lg border border-zinc-700/50 group-hover:scale-105 transition-transform shrink-0 relative"
+                    style={{ backgroundColor: (selectedLayer as ShapeLayer).stroke }}
+                  >
+                    <input 
+                      type="color" 
+                      value={(selectedLayer as ShapeLayer).stroke} 
+                      onChange={(e) => onUpdate(selectedLayer.id, { stroke: e.target.value })} 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                    />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={(selectedLayer as ShapeLayer).stroke} 
+                    onChange={(e) => onUpdate(selectedLayer.id, { stroke: e.target.value })} 
+                    className="w-full bg-transparent text-[10px] font-mono outline-none text-zinc-400 uppercase tracking-widest pl-0" 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[9px] text-zinc-600 font-bold uppercase">Stroke Width</label>
+                  <span className="text-[10px] text-zinc-400 font-mono">{(selectedLayer as ShapeLayer).strokeWidth}px</span>
+                </div>
+                <input 
+                  type="range" 
+                  min={0} 
+                  max={20} 
+                  value={(selectedLayer as ShapeLayer).strokeWidth} 
+                  onChange={(e) => onUpdate(selectedLayer.id, { strokeWidth: Number(e.target.value) })} 
+                  className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white" 
+                />
+              </div>
+            </div>
+          </section>
+        )}
 
         {isImage && (
           <section className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
