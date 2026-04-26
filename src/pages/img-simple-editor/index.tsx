@@ -3,11 +3,33 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 // --- Constants & Helper Functions ---
 const SELECTION_COLOR = "#0ea5e9";
 
+interface Layer {
+  id: string;
+  image: HTMLImageElement;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  rotation: number;
+}
+
 // Generates a unique ID for layers
 const generateId = () =>
-  `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  `layer_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
 // --- Reusable UI Components ---
+interface ControlSliderProps {
+  label: string;
+  value: number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  min: number;
+  max: number;
+  step: number;
+  disabled: boolean;
+}
+
 const ControlSlider = ({
   label,
   value,
@@ -16,7 +38,7 @@ const ControlSlider = ({
   max,
   step,
   disabled,
-}) => (
+}: ControlSliderProps) => (
   <div className="flex flex-col space-y-2">
     <label
       htmlFor={label}
@@ -41,19 +63,22 @@ const ControlSlider = ({
 
 const ImageSimpleEditor = () => {
   // --- State Management ---
-  const [baseImage, setBaseImage] = useState(null);
-  const [layers, setLayers] = useState([]);
-  const [selectedLayerId, setSelectedLayerId] = useState(null);
+  const [baseImage, setBaseImage] = useState<HTMLImageElement | null>(null);
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [baseImageName, setBaseImageName] = useState("No image selected");
   const [baseImageType, setBaseImageType] = useState("image/png"); // To store original file type
 
   // --- Refs for Interaction State ---
-  const canvasRef = useRef(null);
-  const canvasContainerRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
-  const layerListRef = useRef(null); // Ref for the <ul> element for touch events
-  const touchDragInfoRef = useRef({ id: null, index: -1 }); // Ref for touch drag state
+  const layerListRef = useRef<HTMLUListElement>(null); // Ref for the <ul> element for touch events
+  const touchDragInfoRef = useRef<{ id: string | null; index: number }>({
+    id: null,
+    index: -1,
+  }); // Ref for touch drag state
 
   // Memoized reference to the currently selected layer object
   const selectedLayer = React.useMemo(
@@ -66,6 +91,7 @@ const ImageSimpleEditor = () => {
     const canvas = canvasRef.current;
     if (!canvas || !baseImage) return;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
@@ -122,8 +148,8 @@ const ImageSimpleEditor = () => {
   }, [layers, selectedLayerId, redrawCanvas, baseImage]);
 
   // --- File & Layer Management ---
-  const handleBaseImageLoad = (e) => {
-    const file = e.target.files[0];
+  const handleBaseImageLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -135,25 +161,28 @@ const ImageSimpleEditor = () => {
         setSelectedLayerId(null);
         setBaseImageType(file.type); // Store the file type
       };
-      img.src = event.target.result;
+      if (event.target?.result) {
+        img.src = event.target.result as string;
+      }
     };
     reader.readAsDataURL(file);
-    e.target.value = null;
+    e.target.value = "";
   };
 
-  const addLogoLayer = (e) => {
-    const file = e.target.files[0];
+  const addLogoLayer = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file || !baseImage) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const maxLogoWidth = canvas.width * 0.4;
         const aspectRatio = img.width / img.height;
         let logoWidth = Math.min(img.width, maxLogoWidth);
         let logoHeight = logoWidth / aspectRatio;
-        const newLayer = {
+        const newLayer: Layer = {
           id: generateId(),
           image: img,
           name: file.name,
@@ -167,29 +196,33 @@ const ImageSimpleEditor = () => {
         setLayers((prev) => [...prev, newLayer]);
         setSelectedLayerId(newLayer.id);
       };
-      img.src = event.target.result;
+      if (event.target?.result) {
+        img.src = event.target.result as string;
+      }
     };
     reader.readAsDataURL(file);
-    e.target.value = null;
+    e.target.value = "";
   };
 
-  const updateLayer = (id, newProps) =>
+  const updateLayer = (id: string | null, newProps: Partial<Layer>) => {
+    if (!id) return;
     setLayers((l) =>
       l.map((layer) => (layer.id === id ? { ...layer, ...newProps } : layer))
     );
-  const deleteLayer = (id) => {
+  };
+  const deleteLayer = (id: string) => {
     setLayers((l) => l.filter((layer) => layer.id !== id));
     if (selectedLayerId === id) setSelectedLayerId(null);
   };
 
   // --- Layer Reordering Logic (Desktop + Mobile) ---
-  const handleLayerDrop = (e, targetLayerId) => {
+  const handleLayerDrop = (e: React.DragEvent, targetLayerId: string) => {
     e.preventDefault();
     const draggedLayerId = e.dataTransfer.getData("layerId");
     reorderLayers(draggedLayerId, targetLayerId);
   };
 
-  const reorderLayers = (draggedId, targetId) => {
+  const reorderLayers = (draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
     const draggedIndex = layers.findIndex((l) => l.id === draggedId);
     const targetIndex = layers.findIndex((l) => l.id === targetId);
@@ -202,21 +235,21 @@ const ImageSimpleEditor = () => {
   };
 
   // --- Touch Event Handlers for Mobile Layer Reordering ---
-  const handleTouchStart = (e, layerId) => {
+  const handleTouchStart = (e: React.TouchEvent, layerId: string) => {
     touchDragInfoRef.current = {
       id: layerId,
       index: layers.findIndex((l) => l.id === layerId),
     };
   };
 
-  const handleTouchMove = (e) => {
-    if (!touchDragInfoRef.current.id) return;
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchDragInfoRef.current.id || !layerListRef.current) return;
     e.preventDefault(); // Prevent scrolling the page
 
     const touchY = e.touches[0].clientY;
     const draggedId = touchDragInfoRef.current.id;
 
-    const listItems = Array.from(layerListRef.current.children);
+    const listItems = Array.from(layerListRef.current.children) as HTMLElement[];
     const targetItem = listItems.find((item) => {
       const { top, bottom } = item.getBoundingClientRect();
       return touchY > top && touchY < bottom;
@@ -224,7 +257,9 @@ const ImageSimpleEditor = () => {
 
     if (targetItem) {
       const targetId = targetItem.dataset.layerid;
-      reorderLayers(draggedId, targetId);
+      if (targetId) {
+        reorderLayers(draggedId, targetId);
+      }
     }
   };
 
@@ -233,20 +268,24 @@ const ImageSimpleEditor = () => {
   };
 
   // --- Canvas Interaction Logic ---
-  const getMousePos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
+  const getMousePos = (e: MouseEvent | React.MouseEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const getTouchPos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
+  const getTouchPos = (e: React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
     return {
       x: e.touches[0].clientX - rect.left,
       y: e.touches[0].clientY - rect.top,
     };
   };
 
-  const isPosOnLayer = (pos, layer) => {
+  const isPosOnLayer = (pos: { x: number; y: number }, layer: Layer) => {
     const layerCenterX = layer.x + layer.width / 2;
     const layerCenterY = layer.y + layer.height / 2;
     const dx = pos.x - layerCenterX;
@@ -261,9 +300,9 @@ const ImageSimpleEditor = () => {
     );
   };
 
-  const handleMouseDown = (e) => {
-    const pos = getMousePos(e.nativeEvent);
-    let clickedLayer = null;
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const pos = getMousePos(e);
+    let clickedLayer: Layer | null = null;
     for (let i = layers.length - 1; i >= 0; i--) {
       const layer = layers[i];
       if (isPosOnLayer(pos, layer)) {
@@ -278,15 +317,17 @@ const ImageSimpleEditor = () => {
         x: pos.x - clickedLayer.x,
         y: pos.y - clickedLayer.y,
       };
-      canvasRef.current.style.cursor = "grabbing";
+      if (canvasRef.current) {
+        canvasRef.current.style.cursor = "grabbing";
+      }
     } else {
       setSelectedLayerId(null);
     }
   };
 
-  const handleMouseMove = (e) => {
-    if (!isDraggingRef.current || !selectedLayer) return;
-    const pos = getMousePos(e.nativeEvent);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current || !selectedLayerId || !selectedLayer) return;
+    const pos = getMousePos(e);
     updateLayer(selectedLayerId, {
       x: pos.x - dragStartRef.current.x,
       y: pos.y - dragStartRef.current.y,
@@ -300,10 +341,10 @@ const ImageSimpleEditor = () => {
     }
   };
 
-  const handleCanvasTouchStart = (e) => {
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
     const pos = getTouchPos(e);
-    let clickedLayer = null;
+    let clickedLayer: Layer | null = null;
     for (let i = layers.length - 1; i >= 0; i--) {
       const layer = layers[i];
       if (isPosOnLayer(pos, layer)) {
@@ -324,8 +365,8 @@ const ImageSimpleEditor = () => {
     }
   };
 
-  const handleCanvasTouchMove = (e) => {
-    if (!isDraggingRef.current || !selectedLayer) return;
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current || !selectedLayerId || !selectedLayer) return;
     // e.preventDefault();
     const pos = getTouchPos(e);
     updateLayer(selectedLayerId, {
@@ -347,6 +388,7 @@ const ImageSimpleEditor = () => {
     downloadCanvas.width = baseImage.naturalWidth;
     downloadCanvas.height = baseImage.naturalHeight;
     const ctx = downloadCanvas.getContext("2d");
+    if (!ctx) return;
 
     // Calculate the scale factor between the original image and the on-screen canvas
     const scaleFactor = baseImage.naturalWidth / onScreenCanvas.width;
@@ -572,10 +614,12 @@ const ImageSimpleEditor = () => {
                   value={selectedLayer?.width || 0}
                   onChange={(e) => {
                     const newWidth = parseFloat(e.target.value);
-                    updateLayer(selectedLayerId, {
-                      width: newWidth,
-                      height: newWidth / selectedLayer.aspectRatio,
-                    });
+                    if (selectedLayer) {
+                      updateLayer(selectedLayerId, {
+                        width: newWidth,
+                        height: newWidth / selectedLayer.aspectRatio,
+                      });
+                    }
                   }}
                   min={20}
                   max={canvasRef.current ? canvasRef.current.width * 0.8 : 500}

@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { removeBackground } from "@imgly/background-removal";
 
 const BgRemover = () => {
-  const [image, setImage] = useState(null);
-  const [processedImage, setProcessedImage] = useState(null);
+  const [image, setImage] = useState<string | null>(null);
+  const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       setImage(URL.createObjectURL(file));
       setProcessedImage(null); // Reset processed image on new file selection

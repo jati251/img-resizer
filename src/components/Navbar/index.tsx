@@ -29,7 +29,11 @@ export default function Navbar() {
   );
 }
 
-function NavLinks({ onClick }) {
+interface NavLinksProps {
+  onClick?: () => void;
+}
+
+function NavLinks({ onClick }: NavLinksProps) {
   return (
     <>
       <Link

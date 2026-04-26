@@ -1,4 +1,4 @@
-import { Routes, Route, Link, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Home from "./pages/home";
 import ImageResizer from "./pages/img-resizer";
 import ImageSimpleEditor from "./pages/img-simple-editor";

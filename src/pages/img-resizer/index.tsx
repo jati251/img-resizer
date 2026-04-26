@@ -2,18 +2,24 @@ import React, { useState, useRef, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 
 const ImageResizer = () => {
-  const [originalFile, setOriginalFile] = useState(null);
-  const [displayUrl, setDisplayUrl] = useState(null); // single display URL
-  const [originalSize, setOriginalSize] = useState(null); // size in KB
-  const [processedSize, setProcessedSize] = useState(null); // size in KB
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null); // single display URL
+  const [originalSize, setOriginalSize] = useState<string | null>(null); // size in KB
+  const [processedSize, setProcessedSize] = useState<string | null>(null); // size in KB
   const [percent, setPercent] = useState(100);
   const [quality, setQuality] = useState(0.8);
   const [loading, setLoading] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [error, setError] = useState(null);
-  const canvasRef = useRef(null);
-  const [originalResolution, setOriginalResolution] = useState(null);
-  const [processedResolution, setProcessedResolution] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [originalResolution, setOriginalResolution] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [processedResolution, setProcessedResolution] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!originalFile) {
@@ -30,7 +36,7 @@ const ImageResizer = () => {
     return () => URL.revokeObjectURL(url);
   }, [originalFile]);
 
-  function handleFileChange(e) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files[0]) {
       setOriginalFile(e.target.files[0]);
       setError(null);
@@ -64,6 +70,7 @@ const ImageResizer = () => {
           const compressedImg = new Image();
           compressedImg.onload = () => {
             const canvas = canvasRef.current;
+            if (!canvas) return;
             let cw = compressedImg.width;
             let ch = compressedImg.height;
 
@@ -78,6 +85,7 @@ const ImageResizer = () => {
             }
 
             const ctx = canvas.getContext("2d");
+            if (!ctx) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             ctx.save();
@@ -93,11 +101,13 @@ const ImageResizer = () => {
           compressedImg.src = URL.createObjectURL(compressedFile);
         };
 
-        img.src = e.target.result;
+        if (e.target?.result) {
+          img.src = e.target.result as string;
+        }
       };
 
       fileReader.readAsDataURL(originalFile);
-    } catch (err) {
+    } catch (err: any) {
       setError("Error processing image: " + err.message);
     }
     setLoading(false);
