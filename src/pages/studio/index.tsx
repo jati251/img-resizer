@@ -10,6 +10,9 @@ import { LayersPanel } from "./components/LayersPanel";
 import { ProjectSetup } from "./components/ProjectSetup";
 import { CropInterface } from "./components/CropInterface";
 import { ExportModal, ExportSettings } from "./components/ExportModal";
+import { GuideModal } from "./components/GuideModal";
+import { AboutModal } from "./components/AboutModal";
+import { ProjectSettingsModal } from "./components/ProjectSettingsModal";
 
 const SELECTION_COLOR = "#3b82f6";
 
@@ -49,6 +52,22 @@ export default function Studio() {
   const [isFreeTransform, setIsFreeTransform] = useState(false);
   const [isCropping, setIsCropping] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (layers.length > 0) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [layers]);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [draggedLayerIndex, setDraggedLayerIndex] = useState<number | null>(
     null,
@@ -58,8 +77,13 @@ export default function Studio() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
+
+  const handleOpenProjectClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleOpenImageProject = (img: HTMLImageElement) => {
     const { width, height } = img;
@@ -137,6 +161,95 @@ export default function Studio() {
         }
       }
     }, 0);
+  };
+
+  const handleSaveProject = async () => {
+    const serializedLayers = await Promise.all(layers.map(async (layer) => {
+      if (layer.type === "image") {
+        const img = (layer as ImageLayer).image;
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        const ctx = tempCanvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const base64 = tempCanvas.toDataURL("image/png");
+          // Create a version of the layer without the HTMLImageElement, but with the data URL
+          const { image, ...rest } = layer as ImageLayer;
+          return { ...rest, imageData: base64 };
+        }
+      }
+      return layer;
+    }));
+
+    const projectData = {
+      version: "2.1.0",
+      canvasSize,
+      layers: serializedLayers
+    };
+    
+    const blob = new Blob([JSON.stringify(projectData)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `project-${new Date().getTime()}.kuwas`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleOpenProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.canvasSize && data.layers) {
+          // Re-hydrate images
+          const hydratedLayers = await Promise.all(data.layers.map(async (layer: any) => {
+            if (layer.type === "image" && layer.imageData) {
+              return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                  const { imageData, ...rest } = layer;
+                  resolve({ ...rest, image: img });
+                };
+                img.src = layer.imageData;
+              });
+            }
+            return layer;
+          }));
+
+          setCanvasSize(data.canvasSize);
+          setLayers(hydratedLayers as Layer[]);
+          setIsInitialized(true);
+
+          // Fit to screen after re-hydration
+          setTimeout(() => {
+            if (containerRef.current) {
+              const padding = 100;
+              const cw = containerRef.current.clientWidth;
+              const ch = containerRef.current.clientHeight;
+              const fitZoom = Math.min(
+                (cw - padding) / data.canvasSize.width,
+                (ch - padding) / data.canvasSize.height,
+                1,
+              );
+              setZoom(fitZoom);
+              setCanvasOffset({
+                x: (cw - data.canvasSize.width * fitZoom) / 2,
+                y: (ch - data.canvasSize.height * fitZoom) / 2,
+              });
+            }
+          }, 50);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Invalid Kuwas project file.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   const updateLayer = (id: string, updates: Partial<Layer>) => {
@@ -506,7 +619,28 @@ export default function Studio() {
     }
   };
 
+  const handleResetView = useCallback(() => {
+    if (containerRef.current) {
+      const padding = 100;
+      const cw = containerRef.current.clientWidth;
+      const ch = containerRef.current.clientHeight;
+      const fitZoom = Math.min(
+        (cw - padding) / canvasSize.width,
+        (ch - padding) / canvasSize.height,
+        1,
+      );
+      setZoom(fitZoom);
+      setCanvasOffset({
+        x: (cw - canvasSize.width * fitZoom) / 2,
+        y: (ch - canvasSize.height * fitZoom) / 2,
+      });
+    }
+  }, [canvasSize]);
+
   const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
+    const pos = getMousePos(e, containerRef.current, zoom, canvasOffset);
+    setMousePos(pos);
+
     if (isPanning) {
       const dx = (e as any).clientX - dragStartRef.current.x;
       const dy = (e as any).clientY - dragStartRef.current.y;
@@ -514,8 +648,6 @@ export default function Studio() {
       dragStartRef.current = { x: (e as any).clientX, y: (e as any).clientY };
       return;
     }
-
-    const pos = getMousePos(e, containerRef.current, zoom, canvasOffset);
 
     if (resizeHandle && selectedLayer) {
       const dx = pos.x - dragStartRef.current.x,
@@ -643,6 +775,7 @@ export default function Studio() {
       <ProjectSetup
         onConfirm={handleInitProject}
         onOpenImage={handleOpenImageProject}
+        onOpenProject={handleOpenProject}
       />
     );
 
@@ -665,6 +798,14 @@ export default function Studio() {
       )}
       <Topbar
         onExport={handleExport}
+        onNew={() => setIsInitialized(false)}
+        onClearAll={() => setLayers([])}
+        onOpenGuide={() => setShowGuide(true)}
+        onOpenAbout={() => setShowAbout(true)}
+        onOpenSettings={() => setShowSettings(true)}
+        onSaveProject={handleSaveProject}
+        onOpenProject={handleOpenProjectClick}
+        onResetZoom={handleResetView}
         showGuidelines={showGuidelines}
         onToggleGuidelines={() => setShowGuidelines(!showGuidelines)}
         showGrid={showGrid}
@@ -696,6 +837,8 @@ export default function Studio() {
           onPointerUp={handlePointerUp}
           showGuidelines={showGuidelines}
           showGrid={showGrid}
+          onResetView={handleResetView}
+          mousePos={mousePos}
         />
         <aside className="w-[300px] border-l border-zinc-800/50 bg-zinc-900/20 backdrop-blur-xl flex flex-col z-10 shrink-0 overflow-hidden">
           <PropertiesPanel
@@ -723,6 +866,32 @@ export default function Studio() {
           />
         </aside>
       </div>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleOpenProject} 
+        accept=".kuwas" 
+        className="hidden" 
+      />
+
+      {showSettings && (
+        <ProjectSettingsModal 
+          currentWidth={canvasSize.width}
+          currentHeight={canvasSize.height}
+          onClose={() => setShowSettings(false)}
+          onUpdate={(w, h) => {
+            setCanvasSize({ width: w, height: h });
+            setShowSettings(false);
+          }}
+        />
+      )}
+
+      {showGuide && (
+        <GuideModal onClose={() => setShowGuide(false)} />
+      )}
+      {showAbout && (
+        <AboutModal onClose={() => setShowAbout(false)} />
+      )}
     </div>
   );
 }
