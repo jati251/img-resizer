@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    
+    tools {
+        nodejs 'NodeJS'
+    }
 
     environment {
         DOCKER_IMAGE = "img-resizer"
