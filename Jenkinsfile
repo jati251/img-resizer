@@ -1,10 +1,6 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs 'NodeJS'
-    }
-
     environment {
         DOCKER_IMAGE = "img-resizer"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
@@ -19,7 +15,11 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm ci'
+                script {
+                    docker.image('node:24-alpine').inside {
+                        sh 'npm ci'
+                    }
+                }
             }
         }
 
@@ -27,12 +27,20 @@ pipeline {
             parallel {
                 stage('Lint') {
                     steps {
-                        sh 'npm run lint'
+                        script {
+                            docker.image('node:24-alpine').inside {
+                                sh 'npm run lint'
+                            }
+                        }
                     }
                 }
                 stage('Type Check') {
                     steps {
-                        sh 'npm run type-check'
+                        script {
+                            docker.image('node:24-alpine').inside {
+                                sh 'npm run type-check'
+                            }
+                        }
                     }
                 }
             }
