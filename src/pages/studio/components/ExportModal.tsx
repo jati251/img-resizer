@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 
 interface ExportModalProps {
-  canvas: HTMLCanvasElement | null;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  canvasSize: { width: number; height: number };
   filename: string;
   onClose: () => void;
   onExport: (settings: ExportSettings) => void;
@@ -22,7 +23,8 @@ export interface ExportSettings {
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
-  canvas,
+  canvasRef,
+  canvasSize,
   filename,
   onClose,
   onExport,
@@ -35,9 +37,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [estimatedSize, setEstimatedSize] = useState<string>("0 KB");
 
   useEffect(() => {
-    if (!canvas) return;
+    if (!canvasRef.current) return;
     const updateSize = () => {
-      const dataUrl = canvas.toDataURL(settings.format, settings.quality);
+      const dataUrl = canvasRef.current!.toDataURL(settings.format, settings.quality);
       const size = Math.round((dataUrl.length * 3) / 4);
       setEstimatedSize(
         size > 1024 * 1024
@@ -47,7 +49,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     };
     const timer = setTimeout(updateSize, 300);
     return () => clearTimeout(timer);
-  }, [canvas, settings.format, settings.quality]);
+  }, [canvasRef, settings.format, settings.quality]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -159,7 +161,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 Resolution
               </div>
               <div className="text-sm font-bold text-zinc-300 font-mono">
-                {canvas?.width} × {canvas?.height}
+                {canvasSize.width} × {canvasSize.height}
               </div>
             </div>
           </div>

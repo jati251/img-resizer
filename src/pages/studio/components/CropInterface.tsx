@@ -85,7 +85,7 @@ export const CropInterface: React.FC<CropInterfaceProps> = ({ layer, onConfirm, 
                   <button 
                     key={s.id} 
                     onClick={() => {
-                      setShape(s.id as any);
+                      setShape(s.id as CropResult['shape']);
                       if (s.id !== 'rect') setAspect(1);
                     }} 
                     className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all flex items-center gap-2 whitespace-nowrap ${shape === s.id ? 'bg-white text-black' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'}`}

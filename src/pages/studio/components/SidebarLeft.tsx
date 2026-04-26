@@ -1,5 +1,5 @@
 import React from "react";
-import { Image as ImageIcon, Type, Square, Circle, Triangle, Star, Palette, Trash2, Layout } from "lucide-react";
+import { Image as ImageIcon, Type, Square, Circle, Triangle, Star, Palette, Trash2 } from "lucide-react";
 
 interface SidebarLeftProps {
   onAddImage: (e: React.ChangeEvent<HTMLInputElement>) => void;

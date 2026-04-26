@@ -1,7 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { removeBackground } from "@imgly/background-removal";
-import { Layer, ImageLayer, TextLayer, ShapeLayer } from "./types";
-import { generateId, getMousePos, isPosOnLayer, drawAllLayers } from "./utils";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { generateId, drawAllLayers } from "./utils";
 import { Topbar } from "./components/Topbar";
 import { SidebarLeft } from "./components/SidebarLeft";
 import { CanvasArea } from "./components/CanvasArea";
@@ -13,18 +11,17 @@ import { ExportModal, ExportSettings } from "./components/ExportModal";
 import { GuideModal } from "./components/GuideModal";
 import { AboutModal } from "./components/AboutModal";
 import { ProjectSettingsModal } from "./components/ProjectSettingsModal";
+import { ImageLayer } from "./types";
 
-const SELECTION_COLOR = "#3b82f6";
+// Import hooks
+import { useProjectState } from "./hooks/useProjectState";
+import { useLayers } from "./hooks/useLayers";
+import { useViewport } from "./hooks/useViewport";
+import { useCanvasInteraction } from "./hooks/useCanvasInteraction";
 
 const FONT_FAMILIES = [
-  "Inter",
-  "Roboto",
-  "Playfair Display",
-  "Montserrat",
-  "Oswald",
-  "Lora",
-  "Outfit",
-  "Poppins",
+  "Inter", "Roboto", "Playfair Display", "Montserrat",
+  "Oswald", "Lora", "Outfit", "Poppins",
 ];
 
 export default function Studio() {
@@ -37,26 +34,46 @@ export default function Studio() {
       document.head.removeChild(link);
     };
   }, []);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [layers, setLayers] = useState<Layer[]>([]);
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const [canvasSize, setCanvasSize] = useState({ width: 1920, height: 1080 });
-  const [zoom, setZoom] = useState(1);
-  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
-  const [isSpacePressed, setIsSpacePressed] = useState(false);
-  const [isPanning, setIsPanning] = useState(false);
-  const [showGuidelines, setShowGuidelines] = useState(true);
-  const [showGrid, setShowGrid] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const [isProcessingBg, setIsProcessingBg] = useState(false);
-  const [isFreeTransform, setIsFreeTransform] = useState(false);
-  const [isCropping, setIsCropping] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const {
+    layers, setLayers, selectedLayer, selectedLayerId, setSelectedLayerId,
+    updateLayer, addImageLayer, addLayerFromImageFile, addTextLayer, addShapeLayer,
+    setCanvasBackground, deleteLayer, duplicateLayer, draggedLayerIndex, handleDragOver, setDraggedLayerIndex
+  } = useLayers(canvasSize);
 
+  const {
+    zoom, setZoom, canvasOffset, setCanvasOffset,
+    isSpacePressed, isPanning, setIsPanning, showGuidelines, setShowGuidelines,
+    showGrid, setShowGrid, handleResetView
+  } = useViewport(containerRef, canvasSize, isInitialized);
+
+  const {
+    isExporting, setIsExporting,
+    showGuide, setShowGuide,
+    showAbout, setShowAbout,
+    showSettings, setShowSettings,
+    fileInputRef,
+    handleInitProject,
+    handleOpenProjectClick,
+    handleOpenProject,
+    handleSaveProject
+  } = useProjectState({
+    canvasSize, setCanvasSize, setLayers, setZoom, setCanvasOffset, containerRef, setIsInitialized
+  });
+
+  const interaction = useCanvasInteraction({
+    layers, selectedLayerId, setSelectedLayerId, updateLayer, deleteLayer,
+    containerRef, zoom, canvasOffset, setCanvasOffset,
+    isSpacePressed, isPanning, setIsPanning
+  });
+
+  // Handle beforeunload
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (layers.length > 0) {
@@ -68,27 +85,55 @@ export default function Studio() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [layers]);
-  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [draggedLayerIndex, setDraggedLayerIndex] = useState<number | null>(
-    null,
-  );
-  const [editingTextId, setEditingTextId] = useState<string | null>(null);
-  const lastClickTimeRef = useRef(0);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef({ x: 0, y: 0 });
+  // Handle global paste & shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === "INPUT" || activeTag === "TEXTAREA") return;
 
-  const handleOpenProjectClick = () => {
-    fileInputRef.current?.click();
-  };
+      const isCmd = e.metaKey || e.ctrlKey;
+      if (isCmd && e.key === "c" && selectedLayerId) {
+        localStorage.setItem("copiedLayerId", selectedLayerId);
+      }
+      if (isCmd && e.key === "v") {
+        const copiedId = localStorage.getItem("copiedLayerId");
+        if (copiedId) {
+          e.preventDefault();
+          duplicateLayer(copiedId);
+        }
+      }
+    };
 
+    const handlePaste = (e: ClipboardEvent) => {
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === "INPUT" || activeTag === "TEXTAREA") return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            addLayerFromImageFile(file);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("paste", handlePaste);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [addLayerFromImageFile, duplicateLayer, selectedLayerId]);
+
+  // Open image handler
   const handleOpenImageProject = (img: HTMLImageElement) => {
     const { width, height } = img;
     handleInitProject(width, height);
-
     const bgLayer: ImageLayer = {
       id: generateId(),
       type: "image",
@@ -109,415 +154,6 @@ export default function Studio() {
     setLayers([bgLayer]);
   };
 
-  const selectedLayer = React.useMemo(
-    () => layers.find((l) => l.id === selectedLayerId) || null,
-    [layers, selectedLayerId],
-  );
-
-  const handleInitProject = (width: number, height: number, transparent: boolean = false) => {
-    setCanvasSize({ width, height });
-    setIsInitialized(true);
-    
-    // Fit to screen and center
-    setTimeout(() => {
-      if (containerRef.current) {
-        const padding = 100;
-        const cw = containerRef.current.clientWidth;
-        const ch = containerRef.current.clientHeight;
-        const fitZoom = Math.min(
-          (cw - padding) / width,
-          (ch - padding) / height,
-          1,
-        );
-        setZoom(fitZoom);
-        setCanvasOffset({
-          x: (cw - width * fitZoom) / 2,
-          y: (ch - height * fitZoom) / 2,
-        });
-
-        // Only add white background if NOT transparent
-        if (!transparent) {
-          const initialBg: ShapeLayer = {
-            id: generateId(),
-            type: "shape",
-            name: "Project Background",
-            shapeType: "rect",
-            x: 0,
-            y: 0,
-            width,
-            height,
-            rotation: 0,
-            opacity: 100,
-            hidden: false,
-            locked: true,
-            blendMode: "source-over",
-            fill: "#ffffff",
-            stroke: "transparent",
-            strokeWidth: 0,
-          };
-          setLayers([initialBg]);
-        } else {
-          setLayers([]);
-        }
-      }
-    }, 0);
-  };
-
-  const handleSaveProject = async () => {
-    const serializedLayers = await Promise.all(layers.map(async (layer) => {
-      if (layer.type === "image") {
-        const img = (layer as ImageLayer).image;
-        const tempCanvas = document.createElement("canvas");
-        tempCanvas.width = img.width;
-        tempCanvas.height = img.height;
-        const ctx = tempCanvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const base64 = tempCanvas.toDataURL("image/png");
-          // Create a version of the layer without the HTMLImageElement, but with the data URL
-          const { image, ...rest } = layer as ImageLayer;
-          return { ...rest, imageData: base64 };
-        }
-      }
-      return layer;
-    }));
-
-    const projectData = {
-      version: "2.1.0",
-      canvasSize,
-      layers: serializedLayers
-    };
-    
-    const blob = new Blob([JSON.stringify(projectData)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `project-${new Date().getTime()}.kuwas`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleOpenProject = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        if (data.canvasSize && data.layers) {
-          // Re-hydrate images
-          const hydratedLayers = await Promise.all(data.layers.map(async (layer: any) => {
-            if (layer.type === "image" && layer.imageData) {
-              return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                  const { imageData, ...rest } = layer;
-                  resolve({ ...rest, image: img });
-                };
-                img.src = layer.imageData;
-              });
-            }
-            return layer;
-          }));
-
-          setCanvasSize(data.canvasSize);
-          setLayers(hydratedLayers as Layer[]);
-          setIsInitialized(true);
-
-          // Fit to screen after re-hydration
-          setTimeout(() => {
-            if (containerRef.current) {
-              const padding = 100;
-              const cw = containerRef.current.clientWidth;
-              const ch = containerRef.current.clientHeight;
-              const fitZoom = Math.min(
-                (cw - padding) / data.canvasSize.width,
-                (ch - padding) / data.canvasSize.height,
-                1,
-              );
-              setZoom(fitZoom);
-              setCanvasOffset({
-                x: (cw - data.canvasSize.width * fitZoom) / 2,
-                y: (ch - data.canvasSize.height * fitZoom) / 2,
-              });
-            }
-          }, 50);
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Invalid Kuwas project file.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const updateLayer = (id: string, updates: Partial<Layer>) => {
-    setLayers((prev) =>
-      prev.map((layer) =>
-        layer.id === id ? ({ ...layer, ...updates } as Layer) : layer,
-      ),
-    );
-  };
-
-  const addImageLayer = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      let width = img.width,
-        height = img.height;
-      const maxW = canvasSize.width * 0.9;
-      const maxH = canvasSize.height * 0.9;
-
-      // Scale down image if it's larger than the canvas
-      if (width > maxW || height > maxH) {
-        const ratio = Math.min(maxW / width, maxH / height);
-        width *= ratio;
-        height *= ratio;
-      }
-
-      const newLayer: ImageLayer = {
-        id: generateId(),
-        type: "image",
-        name: file.name,
-        image: img,
-        x: (canvasSize.width - width) / 2,
-        y: (canvasSize.height - height) / 2,
-        width,
-        height,
-        aspectRatio: img.width / img.height,
-        rotation: 0,
-        opacity: 100,
-        hidden: false,
-        locked: false,
-        blendMode: "source-over",
-        filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0, sepia: 0, grayscale: 0, hueRotate: 0, invert: 0 },
-      };
-      setLayers([newLayer, ...layers]);
-      setSelectedLayerId(newLayer.id);
-    };
-    img.src = url;
-    e.target.value = "";
-  };
-
-  const addTextLayer = () => {
-    const textLayer: TextLayer = {
-      id: generateId(),
-      type: "text",
-      name: "Text Layer",
-      text: "Edit text in properties",
-      x: canvasSize.width / 2 - 100,
-      y: canvasSize.height / 2 - 25,
-      width: 200,
-      height: 50,
-      rotation: 0,
-      opacity: 100,
-      hidden: false,
-      locked: false,
-      blendMode: "source-over",
-      fontSize: 48,
-      fontFamily: "Inter, sans-serif",
-      color: "#ffffff",
-      fontWeight: "bold",
-      textAlign: "center",
-      letterSpacing: 0,
-      lineHeight: 1.2,
-    };
-    setLayers([textLayer, ...layers]);
-    setSelectedLayerId(textLayer.id);
-  };
-
-  const addShapeLayer = (shapeType: "rect" | "circle" | "triangle" | "star") => {
-    const shapeLayer: ShapeLayer = {
-      id: generateId(),
-      type: "shape",
-      name: `${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)} Layer`,
-      shapeType,
-      x: canvasSize.width / 2 - 100,
-      y: canvasSize.height / 2 - 100,
-      width: 200,
-      height: 200,
-      rotation: 0,
-      opacity: 100,
-      hidden: false,
-      locked: false,
-      blendMode: "source-over",
-      fill: "#3b82f6",
-      stroke: "transparent",
-      strokeWidth: 0,
-    };
-    setLayers([shapeLayer, ...layers]);
-    setSelectedLayerId(shapeLayer.id);
-  };
-
-  const setCanvasBackground = (color: string) => {
-    const bgLayer = layers.find(l => l.name === "Project Background") as ShapeLayer | undefined;
-    
-    if (bgLayer) {
-      updateLayer(bgLayer.id, { fill: color });
-    } else {
-      const newBg: ShapeLayer = {
-        id: generateId(),
-        type: "shape",
-        name: "Project Background",
-        shapeType: "rect",
-        x: 0,
-        y: 0,
-        width: canvasSize.width,
-        height: canvasSize.height,
-        rotation: 0,
-        opacity: 100,
-        hidden: false,
-        locked: true,
-        blendMode: "source-over",
-        fill: color,
-        stroke: "transparent",
-        strokeWidth: 0,
-      };
-      setLayers([...layers, newBg]); 
-    }
-  };
-
-  // Dynamic text measurement
-  useEffect(() => {
-    const measureCanvas = document.createElement("canvas");
-    const ctx = measureCanvas.getContext("2d");
-    if (!ctx) return;
-
-    let changed = false;
-    const newLayers = layers.map((layer) => {
-      if (layer.type === "text") {
-        const tl = layer as TextLayer;
-        ctx.font = `${tl.fontWeight} ${tl.fontSize}px ${tl.fontFamily}`;
-        const lines = tl.text.split("\n");
-        let maxWidth = 0;
-        lines.forEach((line) => {
-          const metrics = ctx.measureText(line);
-          const width = metrics.width + line.length * tl.letterSpacing;
-          if (width > maxWidth) maxWidth = width;
-        });
-        const height = lines.length * tl.fontSize * tl.lineHeight;
-
-        if (
-          Math.abs(layer.width - maxWidth) > 1 ||
-          Math.abs(layer.height - height) > 1
-        ) {
-          changed = true;
-          return { ...layer, width: maxWidth, height: height };
-        }
-      }
-      return layer;
-    });
-
-    if (changed) setLayers(newLayers as Layer[]);
-  }, [layers]);
-
-  // Canvas interaction: Wheel Zoom & Pan
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // Zoom logic (Ctrl + Wheel or Pinch)
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = -e.deltaY;
-        const zoomSpeed = 0.002;
-        const newZoom = Math.min(Math.max(zoom * (1 + delta * zoomSpeed), 0.1), 10);
-        
-        // Calculate mouse position relative to container
-        const rect = container.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        // Calculate new offset to keep mouse position fixed on canvas
-        const newOffsetX = mouseX - (mouseX - canvasOffset.x) * (newZoom / zoom);
-        const newOffsetY = mouseY - (mouseY - canvasOffset.y) * (newZoom / zoom);
-
-        setZoom(newZoom);
-        setCanvasOffset({ x: newOffsetX, y: newOffsetY });
-      } else {
-        // Natural Pan (Touchpad 2-finger scroll or Mouse Wheel)
-        // If Space is held, we already handle it in handlePointerMove, 
-        // but this allows for effortless touchpad panning.
-        setCanvasOffset(prev => ({
-          x: prev.x - e.deltaX,
-          y: prev.y - e.deltaY
-        }));
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, [zoom, canvasOffset]);
-
-  const deleteLayer = (id: string) => {
-    setLayers(layers.filter((l) => l.id !== id));
-    if (selectedLayerId === id) setSelectedLayerId(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedLayerIndex === null || draggedLayerIndex === index) return;
-    const newLayers = [...layers];
-    const draggedItem = newLayers[draggedLayerIndex];
-    newLayers.splice(draggedLayerIndex, 1);
-    newLayers.splice(index, 0, draggedItem);
-    setLayers(newLayers);
-    setDraggedLayerIndex(index);
-  };
-
-  const handleRemoveBg = async () => {
-    if (!selectedLayer || selectedLayer.type !== "image") return;
-    setIsProcessingBg(true);
-    try {
-      const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = (selectedLayer as ImageLayer).image.width;
-      tempCanvas.height = (selectedLayer as ImageLayer).image.height;
-      const ctx = tempCanvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage((selectedLayer as ImageLayer).image, 0, 0);
-        const dataUrl = tempCanvas.toDataURL("image/png");
-        const blob = await removeBackground(dataUrl, {
-          model: "isnet_fp16",
-          proxyToWorker: true,
-        });
-        const newUrl = URL.createObjectURL(blob);
-        const newImg = new Image();
-        newImg.onload = () => {
-          updateLayer(selectedLayer.id, {
-            image: newImg,
-            name: `${selectedLayer.name} (Clean)`,
-          });
-          setIsProcessingBg(false);
-        };
-        newImg.src = newUrl;
-      }
-    } catch (error) {
-      console.error("BG Removal failed", error);
-      setIsProcessingBg(false);
-    }
-  };
-
-  const handleCropConfirm = (pixelCrop: any) => {
-    if (selectedLayerId && selectedLayer) {
-      const newWidth = selectedLayer.width;
-      const newHeight = (newWidth * pixelCrop.height) / pixelCrop.width;
-      updateLayer(selectedLayerId, {
-        crop: pixelCrop,
-        height: newHeight,
-        aspectRatio: pixelCrop.width / pixelCrop.height,
-      });
-      setIsCropping(false);
-    }
-  };
-
-  const handleCropCancel = () => {
-    setIsCropping(false);
-  };
-
   const drawLayers = useCallback(
     (
       ctx: CanvasRenderingContext2D,
@@ -532,12 +168,12 @@ export default function Studio() {
         layers,
         selectedLayerId,
         zoom,
-        isCropping,
+        interaction.isCropping,
         isExport,
-        SELECTION_COLOR
+        "#3b82f6"
       );
     },
-    [layers, selectedLayerId, zoom, isCropping],
+    [layers, selectedLayerId, zoom, interaction.isCropping],
   );
 
   useEffect(() => {
@@ -548,194 +184,13 @@ export default function Studio() {
     }
   }, [drawLayers, isInitialized]);
 
-  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
-    const pos = getMousePos(e, containerRef.current, zoom, canvasOffset);
-
-    if (isSpacePressed) {
-      setIsPanning(true);
-      dragStartRef.current = { x: (e as any).clientX, y: (e as any).clientY };
-      return;
-    }
-    const now = Date.now();
-    const isDoubleClick = now - lastClickTimeRef.current < 300;
-    lastClickTimeRef.current = now;
-
-    if (selectedLayer && !selectedLayer.locked) {
-      const { x, y, width, height } = selectedLayer;
-      const handles = [
-        { id: "nw", x, y },
-        { id: "ne", x: x + width, y },
-        { id: "se", x: x + width, y: y + height },
-        { id: "sw", x, y: y + height },
-      ];
-      const threshold = 15 / zoom;
-      const centerX = x + width / 2,
-        centerY = y + height / 2;
-      const hitHandle = handles.find((h) => {
-        const dx = h.x - centerX,
-          dy = h.y - centerY;
-        const rx =
-          centerX +
-          dx * Math.cos(selectedLayer.rotation) -
-          dy * Math.sin(selectedLayer.rotation);
-        const ry =
-          centerY +
-          dx * Math.sin(selectedLayer.rotation) +
-          dy * Math.cos(selectedLayer.rotation);
-        return (
-          Math.abs(rx - pos.x) < threshold && Math.abs(ry - pos.y) < threshold
-        );
-      });
-      if (hitHandle) {
-        setResizeHandle(hitHandle.id);
-        dragStartRef.current = { x: pos.x, y: pos.y };
-        return;
-      }
-    }
-
-    let clickedLayer: Layer | null = null;
-    for (let i = 0; i < layers.length; i++) {
-      if (isPosOnLayer(pos, layers[i])) {
-        if (layers[i].locked) continue;
-        clickedLayer = layers[i];
-        break;
-      }
-    }
-
-    if (clickedLayer) {
-      setSelectedLayerId(clickedLayer.id);
-      if (isDoubleClick && clickedLayer.type === "text") {
-        setEditingTextId(clickedLayer.id);
-      } else {
-        isDraggingRef.current = true;
-        dragStartRef.current = {
-          x: pos.x - clickedLayer.x,
-          y: pos.y - clickedLayer.y,
-        };
-      }
-    } else {
-      setSelectedLayerId(null);
-      setEditingTextId(null);
-    }
-  };
-
-  const handleResetView = useCallback(() => {
-    if (containerRef.current) {
-      const padding = 100;
-      const cw = containerRef.current.clientWidth;
-      const ch = containerRef.current.clientHeight;
-      const fitZoom = Math.min(
-        (cw - padding) / canvasSize.width,
-        (ch - padding) / canvasSize.height,
-        1,
-      );
-      setZoom(fitZoom);
-      setCanvasOffset({
-        x: (cw - canvasSize.width * fitZoom) / 2,
-        y: (ch - canvasSize.height * fitZoom) / 2,
-      });
-    }
-  }, [canvasSize]);
-
-  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
-    const pos = getMousePos(e, containerRef.current, zoom, canvasOffset);
-    setMousePos(pos);
-
-    if (isPanning) {
-      const dx = (e as any).clientX - dragStartRef.current.x;
-      const dy = (e as any).clientY - dragStartRef.current.y;
-      setCanvasOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
-      dragStartRef.current = { x: (e as any).clientX, y: (e as any).clientY };
-      return;
-    }
-
-    if (resizeHandle && selectedLayer) {
-      const dx = pos.x - dragStartRef.current.x,
-        dy = pos.y - dragStartRef.current.y;
-      let { x, y, width, height } = selectedLayer;
-
-      if (isCropping && selectedLayer.type === "image") {
-        const img = (selectedLayer as ImageLayer).image;
-        const currentCrop = (selectedLayer as ImageLayer).crop || {
-          x: 0,
-          y: 0,
-          width: img.width,
-          height: img.height,
-        };
-        const scaleX = img.width / width;
-        const scaleY = img.height / height;
-
-        let newCrop = { ...currentCrop };
-        if (resizeHandle === "se") {
-          newCrop.width += dx * scaleX;
-          newCrop.height += dy * scaleY;
-        } else if (resizeHandle === "nw") {
-          newCrop.x += dx * scaleX;
-          newCrop.y += dy * scaleY;
-          newCrop.width -= dx * scaleX;
-          newCrop.height -= dy * scaleY;
-        }
-        updateLayer(selectedLayer.id, { crop: newCrop });
-        dragStartRef.current = { x: pos.x, y: pos.y };
-        return;
-      }
-
-      if (resizeHandle === "se") {
-        width += dx;
-        if (selectedLayer.type === "image" && !isFreeTransform)
-          height = width / (selectedLayer as ImageLayer).aspectRatio;
-        else height += dy;
-      } else if (resizeHandle === "sw") {
-        x += dx;
-        width -= dx;
-        if (selectedLayer.type === "image" && !isFreeTransform)
-          height = width / (selectedLayer as ImageLayer).aspectRatio;
-        else height += dy;
-      } else if (resizeHandle === "ne") {
-        y += dy;
-        height -= dy;
-        if (selectedLayer.type === "image" && !isFreeTransform)
-          width = height * (selectedLayer as ImageLayer).aspectRatio;
-        else width += dx;
-      } else if (resizeHandle === "nw") {
-        x += dx;
-        y += dy;
-        width -= dx;
-        height -= dy;
-        if (selectedLayer.type === "image" && !isFreeTransform) {
-          const newW = height * (selectedLayer as ImageLayer).aspectRatio;
-          x += width - newW;
-          width = newW;
-        }
-      }
-      updateLayer(selectedLayer.id, { x, y, width, height });
-      dragStartRef.current = { x: pos.x, y: pos.y };
-      return;
-    }
-    if (!isDraggingRef.current || !selectedLayerId) return;
-    updateLayer(selectedLayerId, {
-      x: pos.x - dragStartRef.current.x,
-      y: pos.y - dragStartRef.current.y,
-    });
-  };
-
-  const handlePointerUp = () => {
-    isDraggingRef.current = false;
-    setResizeHandle(null);
-    setIsPanning(false);
-  };
-
-  const handleExport = () => {
-    setIsExporting(true);
-  };
-
   const handleFinalExport = (settings: ExportSettings) => {
     const canvas = document.createElement("canvas");
     canvas.width = canvasSize.width;
     canvas.height = canvasSize.height;
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      drawLayers(ctx, canvas.width, canvas.height, true);
+      drawAllLayers(ctx, canvas.width, canvas.height, layers, null, 1, false, true, "#3b82f6");
       const link = document.createElement("a");
       link.download = `${settings.filename}.${settings.format.split("/")[1]}`;
       link.href = canvas.toDataURL(settings.format, settings.quality);
@@ -744,33 +199,7 @@ export default function Studio() {
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
-        e.preventDefault();
-        setIsSpacePressed(true);
-      }
-      if (selectedLayerId && (e.key === "Backspace" || e.key === "Delete")) {
-        if (
-          document.activeElement?.tagName === "TEXTAREA" ||
-          document.activeElement?.tagName === "INPUT"
-        )
-          return;
-        deleteLayer(selectedLayerId);
-      }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") setIsSpacePressed(false);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [selectedLayerId]);
-
-  if (!isInitialized)
+  if (!isInitialized) {
     return (
       <ProjectSetup
         onConfirm={handleInitProject}
@@ -778,32 +207,34 @@ export default function Studio() {
         onOpenProject={handleOpenProject}
       />
     );
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#09090b] text-zinc-100 font-sans overflow-hidden">
       {isExporting && (
         <ExportModal
-          canvas={canvasRef.current}
+          canvasRef={canvasRef}
+          canvasSize={canvasSize}
           filename="design"
           onClose={() => setIsExporting(false)}
           onExport={handleFinalExport}
         />
       )}
-      {isCropping && selectedLayer && selectedLayer.type === "image" && (
+      {interaction.isCropping && selectedLayer && selectedLayer.type === "image" && (
         <CropInterface
           layer={selectedLayer as ImageLayer}
-          onConfirm={handleCropConfirm}
-          onCancel={handleCropCancel}
+          onConfirm={interaction.handleCropConfirm}
+          onCancel={interaction.handleCropCancel}
         />
       )}
       <Topbar
-        onExport={handleExport}
+        onExport={() => setIsExporting(true)}
         onNew={() => setIsInitialized(false)}
         onClearAll={() => setLayers([])}
         onOpenGuide={() => setShowGuide(true)}
         onOpenAbout={() => setShowAbout(true)}
         onOpenSettings={() => setShowSettings(true)}
-        onSaveProject={handleSaveProject}
+        onSaveProject={() => handleSaveProject(layers)}
         onOpenProject={handleOpenProjectClick}
         onResetZoom={handleResetView}
         showGuidelines={showGuidelines}
@@ -827,29 +258,25 @@ export default function Studio() {
           canvasOffset={canvasOffset}
           isSpacePressed={isSpacePressed}
           layers={layers}
-          editingTextId={editingTextId}
-          setEditingTextId={setEditingTextId}
+          editingTextId={interaction.editingTextId}
+          setEditingTextId={interaction.setEditingTextId}
           onUpdateLayer={updateLayer}
           setZoom={setZoom}
           setSelectedLayerId={setSelectedLayerId}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+          onPointerDown={interaction.handlePointerDown}
+          onPointerMove={interaction.handlePointerMove}
+          onPointerUp={interaction.handlePointerUp}
           showGuidelines={showGuidelines}
           showGrid={showGrid}
           onResetView={handleResetView}
-          mousePos={mousePos}
         />
         <aside className="w-[300px] border-l border-zinc-800/50 bg-zinc-900/20 backdrop-blur-xl flex flex-col z-10 shrink-0 overflow-hidden">
           <PropertiesPanel
             selectedLayer={selectedLayer}
-            isFreeTransform={isFreeTransform}
-            isCropping={isCropping}
-            isProcessingBg={isProcessingBg}
+            isProcessingBg={interaction.isProcessingBg}
             onUpdate={updateLayer}
-            onToggleFree={() => setIsFreeTransform(!isFreeTransform)}
-            onToggleCrop={() => setIsCropping(!isCropping)}
-            onRemoveBg={handleRemoveBg}
+            onToggleCrop={() => interaction.setIsCropping(!interaction.isCropping)}
+            onRemoveBg={interaction.handleRemoveBg}
             onDelete={deleteLayer}
           />
           <LayersPanel

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { Layer, TextLayer } from "../types";
 import { Rulers } from "./Rulers";
+import { getMousePos } from "../utils";
 
 interface CanvasAreaProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -22,7 +23,6 @@ interface CanvasAreaProps {
   showGrid?: boolean;
   canvasBg?: string;
   onResetView?: () => void;
-  mousePos: { x: number; y: number };
 }
 
 export const CanvasArea: React.FC<CanvasAreaProps> = ({
@@ -45,11 +45,21 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   showGrid = true,
   canvasBg = "#09090b",
   onResetView,
-  mousePos,
 }) => {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
   const editingLayer = layers.find((l) => l.id === editingTextId) as
     | TextLayer
     | undefined;
+
+  const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // Intercept to update local mousePos for the status bar, preventing root re-renders
+    const pos = getMousePos(e, containerRef.current, zoom, canvasOffset);
+    setMousePos(pos);
+    
+    // Pass to original handler for drag math
+    onPointerMove(e);
+  }, [containerRef, zoom, canvasOffset, onPointerMove]);
 
   return (
     <main
@@ -61,7 +71,7 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
         }
       }}
       onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
+      onPointerMove={handlePointerMove}
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerUp}
       className={`flex-1 bg-[#09090b] relative overflow-hidden outline-none touch-none ${isSpacePressed ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
@@ -179,3 +189,4 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
     </main>
   );
 };
+

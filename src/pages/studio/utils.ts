@@ -2,17 +2,22 @@ import { Layer, ImageLayer, TextLayer, ShapeLayer } from "./types";
 
 export const generateId = () => `layer_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
-export const getMousePos = (e: any, element: HTMLElement | null, zoom: number, offset: { x: number, y: number }) => {
+import React from "react";
+
+export const getMousePos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent, element: HTMLElement | null, zoom: number, offset: { x: number, y: number }) => {
   if (!element) return { x: 0, y: 0 };
   const rect = element.getBoundingClientRect();
   let clientX, clientY;
   
-  if (e.touches && e.touches.length > 0) {
+  if ("touches" in e && e.touches.length > 0) {
     clientX = e.touches[0].clientX;
     clientY = e.touches[0].clientY;
+  } else if ("clientX" in e) {
+    clientX = (e as React.MouseEvent | MouseEvent).clientX;
+    clientY = (e as React.MouseEvent | MouseEvent).clientY;
   } else {
-    clientX = e.clientX;
-    clientY = e.clientY;
+    clientX = 0;
+    clientY = 0;
   }
   
   return { 
@@ -90,7 +95,7 @@ export const drawAllLayers = (
           const outerRadius = Math.min(hw, hh); 
           const innerRadius = outerRadius * 0.4;
           let rot = Math.PI / 2 * 3;
-          let step = Math.PI / spikes;
+          const step = Math.PI / spikes;
           ctx.moveTo(0, -outerRadius);
           for (let i = 0; i < spikes; i++) {
             ctx.lineTo(Math.cos(rot) * outerRadius, Math.sin(rot) * outerRadius);
@@ -143,6 +148,7 @@ export const drawAllLayers = (
       ctx.textAlign = txtLayer.textAlign;
       ctx.textBaseline = "middle";
       if ("letterSpacing" in ctx) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (ctx as any).letterSpacing = `${txtLayer.letterSpacing}px`;
       }
       
@@ -156,6 +162,7 @@ export const drawAllLayers = (
         else if (txtLayer.textAlign === "right") alignX = layer.width / 2;
         ctx.fillText(line, alignX, startY + index * lineHeight);
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ("letterSpacing" in ctx) (ctx as any).letterSpacing = "0px";
     } else if (layer.type === "shape") {
         const shp = layer as ShapeLayer;
@@ -177,7 +184,7 @@ export const drawAllLayers = (
           const outerRadius = Math.min(hw, hh);
           const innerRadius = outerRadius * 0.4;
           let rot = (Math.PI / 2) * 3;
-          let step = Math.PI / spikes;
+          const step = Math.PI / spikes;
           ctx.moveTo(0, -outerRadius);
           for (let i = 0; i < spikes; i++) {
             ctx.lineTo(Math.cos(rot) * outerRadius, Math.sin(rot) * outerRadius);

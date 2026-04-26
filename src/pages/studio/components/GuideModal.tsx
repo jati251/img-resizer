@@ -2,10 +2,8 @@ import React, { useEffect, useState } from "react";
 import {
   X,
   MousePointer2,
-  Move,
   Layers,
   Palette,
-  Sparkles,
   Keyboard,
   ChevronRight,
   ChevronLeft,

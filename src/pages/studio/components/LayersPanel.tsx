@@ -8,7 +8,8 @@ import {
   Trash2, 
   Lock, 
   Unlock,
-  GripVertical
+  GripVertical,
+  Square
 } from "lucide-react";
 
 interface LayersPanelProps {
@@ -60,7 +61,9 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
 
             <div className="flex items-center gap-3 overflow-hidden flex-1">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${selectedLayerId === layer.id ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>
-                {layer.type === 'image' ? <ImageIcon size={16} /> : <TypeIcon size={16} />}
+                {layer.type === 'image' && <ImageIcon size={16} />}
+                {layer.type === 'text' && <TypeIcon size={16} />}
+                {layer.type === 'shape' && <Square size={16} />}
               </div>
               <div className="flex flex-col min-w-0">
                  <span className={`text-[11px] font-medium truncate ${layer.hidden ? 'text-zinc-600' : 'text-zinc-300'}`}>{layer.name}</span>

@@ -6,8 +6,7 @@ interface RulersProps {
   canvasSize: { width: number; height: number };
 }
 
-export const Rulers: React.FC<RulersProps> = ({ zoom, offset, canvasSize }) => {
-  const rulerSize = 24;
+export const Rulers: React.FC<RulersProps> = ({ zoom, offset }) => {
   const tickStep = 100;
 
   const renderTicks = (type: "horizontal" | "vertical") => {

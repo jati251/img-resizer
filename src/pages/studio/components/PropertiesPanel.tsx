@@ -1,5 +1,5 @@
 import React from "react";
-import { Layer, ImageLayer, TextLayer, ShapeLayer } from "../types";
+import { Layer, ImageLayer, TextLayer, ShapeLayer, BlendMode } from "../types";
 import { 
   Trash2, 
   Layout, 
@@ -11,7 +11,6 @@ import {
   AlignLeft, 
   AlignCenter, 
   AlignRight,
-  Maximize2,
   ChevronDown,
   Lock,
   Unlock
@@ -19,11 +18,8 @@ import {
 
 interface PropertiesPanelProps {
   selectedLayer: Layer | null;
-  isFreeTransform: boolean;
-  isCropping: boolean;
   isProcessingBg: boolean;
   onUpdate: (id: string, updates: Partial<Layer>) => void;
-  onToggleFree: () => void;
   onToggleCrop: () => void;
   onRemoveBg: () => void;
   onDelete: (id: string) => void;
@@ -43,12 +39,9 @@ const FONTS = [
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ 
   selectedLayer, 
-  isFreeTransform, 
-  isCropping, 
   isProcessingBg, 
   onUpdate, 
-  onToggleFree, 
-  onToggleCrop, 
+  onToggleCrop,
   onRemoveBg,
   onDelete
 }) => {
@@ -133,7 +126,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                <div className="relative group">
                  <select 
                    value={selectedLayer.blendMode || "source-over"} 
-                   onChange={(e) => onUpdate(selectedLayer.id, { blendMode: e.target.value as any })}
+                   onChange={(e) => onUpdate(selectedLayer.id, { blendMode: e.target.value as BlendMode })}
                    className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:border-zinc-600 outline-none transition-all text-zinc-300 appearance-none cursor-pointer capitalize"
                  >
                    {["source-over", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"].map(mode => (
@@ -249,7 +242,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                  <span className="text-[9px] font-bold uppercase tracking-wider">Pro Adjustments</span>
                </div>
                {Object.entries((selectedLayer as ImageLayer).filters).map(([key, value]) => {
-                 let min = 0; let max = 200; let unit = '%';
+                 const min = 0; let max = 200; let unit = '%';
                  if (key === 'blur') { max = 20; unit = 'px'; }
                  if (key === 'hueRotate') { max = 360; unit = '°'; }
                  if (key === 'sepia' || key === 'grayscale' || key === 'invert') { max = 100; }
