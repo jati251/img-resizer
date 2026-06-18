@@ -1,9 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"img-resizer","namespace":"apps"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"img-resizer"}},"template":{"metadata":{"labels":{"app":"img-resizer"}},"spec":{"containers":[{"image":"192.168.1.230:30500/img-resizer:latest","imagePullPolicy":"Always","name":"img-resizer","ports":[{"containerPort":80}],"resources":{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"10m","memory":"64Mi"}}}]}}}}
   name: img-resizer
   namespace: apps
 spec:
@@ -20,6 +17,7 @@ spec:
     type: RollingUpdate
   template:
     metadata:
+      creationTimestamp: null
       labels:
         app: img-resizer
     spec:
@@ -48,13 +46,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"img-resizer-svc","namespace":"apps"},"spec":{"ports":[{"port":80,"targetPort":80}],"selector":{"app":"img-resizer"}}}
   name: img-resizer-svc
   namespace: apps
 spec:
-  - 10.103.0.190
   internalTrafficPolicy: Cluster
   ipFamilies:
   - IPv4
