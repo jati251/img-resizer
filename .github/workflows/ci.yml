@@ -1,0 +1,38 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "master", "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: docker build -t 192.168.1.41:30500/image-tool:${{ github.sha }} -t 192.168.1.41:30500/image-tool:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push 192.168.1.41:30500/image-tool:${{ github.sha }}
+          docker push 192.168.1.41:30500/image-tool:latest
+
+      - name: Update GitOps Repository
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          git clone https://x-access-token:${GH_PAT}@github.com/jati251/homelab-gitops.git
+          cd homelab-gitops
+          
+          # Replace the image tag
+          sed -i "s|image: 192.168.1.41:30500/image-tool:.*|image: 192.168.1.41:30500/image-tool:${GITHUB_SHA}|g" apps/img-resizer.yaml || true
+          
+          git config user.name "CI/CD Pipeline"
+          git config user.email "ci@homelab.local"
+          git add .
+          
+          git diff-index --quiet HEAD || git commit -m "Update image-tool to ${GITHUB_SHA}"
+          git push origin master
