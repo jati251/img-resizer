@@ -28,7 +28,7 @@ jobs:
           cd homelab-gitops
           
           # Replace the image tag
-          sed -i "s|image: 192.168.1.41:30500/image-tool:.*|image: 192.168.1.41:30500/image-tool:${GITHUB_SHA}|g" apps/img-resizer.yaml || true
+          sed -i "s|image: 192.168.1.41:30500/image-tool:.*|image: 192.168.1.41:30500/image-tool:${GITHUB_SHA}|g" apps/img-resizer/deploy.yaml || true
           
           git config user.name "CI/CD Pipeline"
           git config user.email "ci@homelab.local"
